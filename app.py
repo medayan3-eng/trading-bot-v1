@@ -4,27 +4,25 @@ import pandas as pd
 import numpy as np
 
 # --- הגדרות ---
-st.set_page_config(page_title="Global Sniper 🌎", layout="wide")
-st.title("🌎 Global Sniper: מערכת סריקה גלובלית (100 הנבחרות)")
-st.caption("ניתוח הנדסי: גרעין, AI, ביטחון, קריפטו, סחורות וטראמפ-טרייד")
+st.set_page_config(page_title="Global Sniper V4 🌍", layout="wide")
+st.title("🌍 Global Sniper V4: מערכת סריקה גלובלית (הרשימה המורחבת)")
+st.caption("כולל: מחשוב קוונטי, חלל, שבבים, ביוטק, סחורות וקריפטו")
 
-# --- רשימת ה-100 המהונדסת ---
-# חילקתי לקטגוריות כדי שיהיה סדר בעיניים, אבל הקוד מאחד אותן
+# --- רשימת המעקב המהונדסת (כולל התוספות החדשות) ---
 SECTORS = {
-    "🔥 AI & Chips (The Kings)": ["NVDA", "AMD", "TSM", "AVGO", "ARM", "MU", "INTC", "QCOM", "SMCI", "DELL"],
-    "❄️ Cooling & Data Center Infra": ["VRT", "ETN", "ANET", "JBL", "CLS", "GLW", "HPE"],
-    "☢️ Nuclear & Uranium (AI Power)": ["CCJ", "URA", "UEC", "BWXT", "LEU", "OKLO", "SMR", "CEG", "VST"],
-    "🛡️ Defense & War (Geopolitics)": ["LMT", "RTX", "GD", "NOC", "KTOS", "PLTR", "BA", "AXON", "ESLT"],
-    "₿ Crypto & Fintech (Trump Trade)": ["COIN", "MSTR", "MARA", "RIOT", "HOOD", "PYPL", "SQ", "SOFI", "V", "MA"],
-    "⛏️ Commodities: Copper, Gold, Lithium": ["FCX", "SCCO", "NEM", "GOLD", "PAAS", "ALB", "MP", "CLF", "X", "VALE"],
-    "🛢️ Energy & Oil (Venezuela/Iran)": ["XOM", "CVX", "OXY", "VLO", "HAL", "SLB", "EOG", "PBR"],
-    "💊 BioTech & Pharma": ["LLY", "NVO", "PFE", "MRK", "AMGN", "BIIB", "CRSP"],
-    "🛍️ Consumer & Turnaround Giants": ["AMZN", "GOOGL", "META", "MSFT", "AAPL", "TSLA", "NFLX", "DIS", "SBUX", "NKE", "BABA", "PDD"],
-    "💻 Cyber Security": ["PANW", "CRWD", "FTNT", "ZS", "CYBR"]
+    "⚛️ Quantum & Future Tech": ["IONQ", "RGTI", "QBTS", "QTUM", "WOLF", "CRS", "IREN", "CRSP", "U"],
+    "🚀 Space & Mobility (Next Gen)": ["RKLB", "JOBY", "RIVN", "INVZ", "MBLY", "UBER", "TSLA"],
+    "🔥 AI & Chips (The Kings)": ["NVDA", "AMD", "TSM", "AVGO", "ARM", "MU", "INTC", "QCOM", "SMCI", "ANET", "ORCL"],
+    "⛏️ Commodities: Copper, Gold, Lithium": ["FCX", "COPX", "SCCO", "AA", "CENX", "NHYDY", "CLF", "ALB", "MP", "GLW", "X"],
+    "🛢️ Energy & Infrastructure": ["KMI", "TRGP", "CCJ", "URA", "VLO", "CVX", "XOM", "ENPH", "VRT", "ETN"],
+    "💊 BioTech & Pharma (Weight Loss/Genes)": ["NVO", "LLY", "VRTX", "ZBIO", "AMGN", "PFE", "TEVA"],
+    "💳 Fintech & Software": ["SOFI", "PYPL", "FISV", "TTD", "NFLX", "COIN", "HOOD", "SQ", "MSFT", "GOOGL", "AMZN", "META"],
+    "🛡️ Defense & Cyber": ["PLTR", "LMT", "RTX", "KTOS", "CRWD", "PANW", "CHTR", "VOD"],
+    "🏗️ Real Estate & REITs": ["AMT", "O", "PLD"]
 }
 
 # איחוד כל הרשימות לרשימה אחת שטוחה
-ALL_TICKERS = [ticker for sector in SECTORS.values() for ticker in sector]
+ALL_TICKERS = list(set([ticker for sector in SECTORS.values() for ticker in sector]))
 
 # --- פונקציה מוגנת (Cache) למניעת חסימות ---
 @st.cache_data(ttl=3600)
@@ -39,7 +37,7 @@ def get_data(ticker):
         return pd.DataFrame()
 
 # --- ממשק משתמש ---
-if st.button("🚀 הרץ סריקת עומק (100 מניות)"):
+if st.button("🚀 הרץ סריקת עומק (כולל קוונטום וחלל)"):
     results = []
     status_text = st.empty()
     progress_bar = st.progress(0)
@@ -63,13 +61,11 @@ if st.button("🚀 הרץ סריקת עומק (100 מניות)"):
             df['SMA_200'] = df['Close'].rolling(200).mean()
             
             # 2. לוגיקת SFP (מלכודת נזילות)
-            # מחפשים נר שירד מתחת לנמוך של 20 יום - וסגר מעליו
             prev_low_20 = df['Low'].shift(1).rolling(20).min().iloc[-1]
             today = df.iloc[-1]
             prev = df.iloc[-2]
             
-            # התנאי: הנמוך של אתמול שבר שפל, אבל הסגירה הייתה חזקה
-            # או: הנמוך של היום שבר שפל, והמחיר עכשיו מעליו (בזמן אמת)
+            # זיהוי SFP
             sfp_signal = (today['Low'] < prev_low_20) and (today['Close'] > prev_low_20)
             
             # 3. RSI (לוודא שלא רותח)
@@ -115,13 +111,11 @@ if st.button("🚀 הרץ סריקת עומק (100 מניות)"):
     status_text.empty()
     
     if results:
-        st.success(f"הסריקה הושלמה! נמצאו {len(results)} הזדמנויות פוטנציאליות.")
-        # הצגת התוצאות בטבלה אינטראקטיבית
+        st.success(f"הסריקה הושלמה! נמצאו {len(results)} הזדמנויות.")
         st.dataframe(pd.DataFrame(results))
-        st.caption("הערה: SFP Trap = מלכודת נזילות (חזק יותר). Dip Buy = קנייה בירידה במגמה עולה.")
     else:
-        st.warning("השוק קשוח היום. מתוך 100 מניות, אף אחת לא נתנה איתות מושלם. זה הזמן לשבת על הגדר.")
+        st.warning("לא נמצאו איתותים מדויקים כרגע. השוק במצב המתנה.")
 
 # --- הצגת רשימת המעקב למטה ---
-with st.expander("ראה את כל רשימת ה-100 (לחץ לפתיחה)"):
+with st.expander("ראה את רשימת הסריקה המלאה"):
     st.write(SECTORS)
