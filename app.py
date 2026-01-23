@@ -10,41 +10,47 @@ st.set_page_config(page_title="Global Sniper V6 🌍", layout="wide")
 col1, col2 = st.columns([3, 1])
 with col1:
     st.title("🌍 Global Sniper V6: המהדורה המלאה")
-    st.caption("מערכת סריקה: קוונטום, חלל, שבבים, ביוטק, סחורות וקריפטו (כולל המניות החדשות)")
+    st.caption("מערכת סריקה: קוונטום, חלל, שבבים, ביוטק, סחורות וקריפטו")
 with col2:
     if st.button("🧹 נקה זיכרון (Force Refresh)"):
         st.cache_data.clear()
         st.rerun()
 
-# --- מדריך הצייד (הטבלה המקורית) ---
-with st.expander("📘 איך לקרוא את האיתותים? (מדריך מקוצר)", expanded=False):
+# --- מדריך הצייד (התוספת החדשה) ---
+with st.expander("📘 איך לבחור מניה לבדיקה ב-Colab? (טבלת הסבר)", expanded=False):
     st.markdown("""
     ### 🎯 מטריצת קבלת החלטות
+    לפני שאתה רץ ל-Colab, בדוק את השילוב הבא בטבלה למטה:
+
+    | דירוג איכות | סוג האיתות (Signal) | מגמה (Trend) | RSI | מסקנה הנדסית |
+    | :--- | :--- | :--- | :--- | :--- |
+    | 🥇 **יהלום (Top Tier)** | 🔥 **SFP Trap** | **Bullish 🐂** | **40-50** | **חובה לבדוק ב-Colab!** זהו מצב אידיאלי: מלכודת נזילות במגמה עולה. |
+    | 🥈 **חזק (Strong)** | 📉 **Dip Buy** | **Bullish 🐂** | **30-40** | **בדיקה מומלצת.** המניה במגמה עולה אבל בתיקון חד (מכירת יתר). |
+    | 🥉 **ספקולטיבי** | 🔥 **SFP Trap** | Bearish 🐻 | 30-60 | **סיכון גבוה.** ניסיון לתפוס "תחתית" במגמה יורדת. לבדוק רק אם ה-AI נותן ציון גבוה מאוד. |
+    | ⚠️ **מסוכן** | 📉 Dip Buy | Bearish 🐻 | < 30 | **סכין נופלת.** המניה מתרסקת. ה-AI כנראה יגיד WAIT. |
     
-    | סוג האיתות | המצב בשטח | לוגיקה |
-    | :--- | :--- | :--- |
-    | 🔥 **SFP Trap** | **מלכודת נזילות** | ניעור של סוחרים ("סטופים") במגמה עולה. האיתות הכי חזק להיפוך. |
-    | 📉 **Dip Buy** | **קנייה בירידה** | מניה במגמה עולה שחטפה מכה זמנית (RSI < 40). הזדמנות ערך. |
-    | 🚀 **Momentum** | **הצטרפות לגל** | מניה שטסה למעלה (RSI 50-70) ובורחת מהממוצעים. לרוץ עם המגמה. |
+    **מקרא מקוצר:**
+    * **SFP Trap:** ניעור של סוחרים חלשים (סימן שכסף חכם נכנס). חזק יותר מסתם ירידה.
+    * **RSI:** מתחת ל-30 זה "זול מאוד" (אולי מדי). סביב 40-50 זה "זול בריא".
     """)
 
-# --- רשימת המעקב המעודכנת (V6 + בקשות חדשות) ---
+# --- רשימת המעקב המהונדסת ---
 SECTORS = {
-    "⚛️ Quantum & Cyber": ["IONQ", "RGTI", "QBTS", "QTUM", "QUBT", "RDWR", "WOLF", "CRWD", "PANW", "ZS", "FTNT"],
-    "🚀 Space & Defense": ["RKLB", "LUNR", "KTOS", "VVX", "BA", "LMT", "RTX", "JOBY", "ACHR", "INVZ"],
+    "⚛️ Quantum & Future": ["IONQ", "RGTI", "QBTS", "QTUM", "WOLF", "CRS", "IREN", "CRSP", "U", "QUBT"],
+    "🚀 Space & Mobility": ["RKLB", "JOBY", "RIVN", "INVZ", "MBLY", "UBER", "TSLA", "LMT", "RTX", "KTOS", "BA"],
     "🔥 AI, Chips & Cloud": ["NVDA", "AMD", "TSM", "AVGO", "ARM", "MU", "INTC", "QCOM", "SMCI", "ANET", "ORCL", "MSFT", "GOOGL", "AMZN", "META", "DELL", "HPE", "TTD"],
-    "⚙️ Thermal, Energy & Ind.": ["VRT", "MOD", "ASPN", "ETN", "GE", "CAT", "REI", "ENPH", "FSLR", "CAMT", "CEG", "KMI", "TRGP", "CCJ", "URA"], 
-    "⛏️ Commodities (Materials)": ["FCX", "COPX", "SCCO", "AA", "CENX", "NHYDY", "CLF", "ALB", "MP", "PPTA", "VALE", "GLW", "X"],
-    "🚗 Mobility & Auto": ["RIVN", "MBLY", "UBER", "TSLA", "GGM", "LAZR"],
-    "💊 BioTech & Pharma": ["NVO", "LLY", "VRTX", "ZBIO", "AMGN", "PFE", "TEVA", "CRSP", "BIIB"],
-    "💳 Fintech & Services": ["SOFI", "PYPL", "FISV", "NFLX", "COIN", "HOOD", "SQ", "DIS", "SBUX", "NKE", "VOD"]
+    "⛏️ Commodities (Copper/Lithium)": ["FCX", "COPX", "SCCO", "AA", "CENX", "NHYDY", "CLF", "ALB", "MP", "GLW", "X", "VALE"],
+    "🛢️ Energy & Infra": ["KMI", "TRGP", "CCJ", "URA", "VLO", "CVX", "XOM", "ENPH", "VRT", "ETN", "OXY", "SLB"],
+    "💊 BioTech & Pharma": ["NVO", "LLY", "VRTX", "ZBIO", "AMGN", "PFE", "TEVA", "BIIB"],
+    "💳 Fintech & Consumer": ["SOFI", "PYPL", "FISV", "NFLX", "COIN", "HOOD", "SQ", "DIS", "SBUX", "NKE"],
+    "💾 Storage & Cyber": ["WDC", "PSTG", "CRWD", "PANW", "CHTR", "VOD", "ZS", "FTNT"]
 }
 
 # איחוד כל הרשימות
 ALL_TICKERS = list(set([ticker for sector in SECTORS.values() for ticker in sector]))
 total_count = len(ALL_TICKERS)
 
-st.info(f"המערכת סורקת {total_count} נכסים בזמן אמת...")
+st.info(f"מערכת סורקת {total_count} מניות בזמן אמת...")
 
 # --- פונקציה מוגנת (Cache) ---
 @st.cache_data(ttl=3600)
@@ -57,7 +63,7 @@ def get_data(ticker):
     except:
         return pd.DataFrame()
 
-# --- מנוע הסריקה (לוגיקה V6 מקורית) ---
+# --- ממשק משתמש ---
 if st.button("🚀 הרץ סריקת עומק (Deep Scan)"):
     results = []
     status_text = st.empty()
@@ -73,12 +79,13 @@ if st.button("🚀 הרץ סריקת עומק (Deep Scan)"):
         if len(df) < 200: continue 
 
         try:
-            # 1. חישובים טכניים
+            # --- המנוע ההנדסי ---
             df['SMA_200'] = df['Close'].rolling(200).mean()
             
             # SFP Logic
             prev_low_20 = df['Low'].shift(1).rolling(20).min().iloc[-1]
             today = df.iloc[-1]
+            
             sfp_signal = (today['Low'] < prev_low_20) and (today['Close'] > prev_low_20)
             
             # RSI Logic
@@ -92,18 +99,13 @@ if st.button("🚀 הרץ סריקת עומק (Deep Scan)"):
             trend_dist = ((today['Close'] - df['SMA_200'].iloc[-1]) / df['SMA_200'].iloc[-1]) * 100
             trend_status = "Bullish 🐂" if trend_dist > 0 else "Bearish 🐻"
 
-            # 2. לוגיקת האיתותים (V6 Original - בלי החמרות יתר)
-            
-            # Dip Buy: ירידה (RSI < 40) במגמה עולה
+            # תנאי סף לכניסה לטבלה
             is_oversold_uptrend = (rsi < 40) and (trend_dist > 0)
-            
-            # Momentum: מניה חזקה (RSI 50-70) שרצה מעל הממוצע (מעל 10% מרחק)
             is_momentum = (rsi > 50) and (rsi < 70) and (trend_dist > 10) 
             
-            # אם יש איתות כלשהו -> הוסף לטבלה
-            if sfp_signal or is_oversold_uptrend or is_momentum:
+            if sfp_signal or is_oversold_uptrend or (is_momentum and ticker in SECTORS["🔥 AI, Chips & Cloud"]):
                 
-                stop_loss = today['Low'] * 0.98 # סטופ של 2% מתחת לנמוך היומי
+                stop_loss = today['Low'] * 0.98 
                 
                 sector_name = "General"
                 for sec, tickers in SECTORS.items():
@@ -134,21 +136,17 @@ if st.button("🚀 הרץ סריקת עומק (Deep Scan)"):
     status_text.empty()
     
     if results:
-        # מיון התוצאות
+        # מיון חכם: SFP ראשון, אח"כ לפי RSI נמוך
         df_results = pd.DataFrame(results)
         
         # טריק למיון: נותנים ציון מספרי לסוג האיתות
-        # SFP מקבל עדיפות עליונה, אחריו Dip Buy, ובסוף Momentum
-        priority = {"🔥 SFP Trap": 1, "📉 Dip Buy": 2, "🚀 Momentum": 3}
-        df_results['Sort_Key'] = df_results['Signal'].map(priority)
-        
-        # מיון משני לפי RSI (נמוך לגבוה בתוך הקטגוריה)
+        df_results['Sort_Key'] = df_results['Signal'].apply(lambda x: 1 if "SFP" in x else (2 if "Dip" in x else 3))
         df_results = df_results.sort_values(by=['Sort_Key', 'RSI'])
         df_results = df_results.drop(columns=['Sort_Key'])
 
         st.success(f"הסריקה הושלמה! נמצאו {len(results)} הזדמנויות.")
         st.dataframe(df_results, use_container_width=True)
-        st.caption("הנתונים נכונים לסגירת המסחר האחרונה בארה\"ב (או נתונים חיים אם השוק פתוח).")
+        st.info("💡 טיפ: השתמש בטבלת ההסבר למעלה כדי לבחור את המועמדת הטובה ביותר לבדיקה ב-Colab.")
     else:
         st.warning("לא נמצאו איתותים חזקים כרגע.")
 
