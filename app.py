@@ -28,7 +28,7 @@ with st.expander("📘 איך לקרוא את האיתותים? (מדריך מק
     | 🚀 **Momentum** | **הצטרפות לגל** | מניה שטסה למעלה (RSI 50-70) ובורחת מהממוצעים. לרוץ עם המגמה. |
     """)
 
-# --- רשימת המעקב (כולל התוספות שביקשת) ---
+# --- רשימת המעקב המעודכנת (V6 + בקשות חדשות) ---
 SECTORS = {
     "⚛️ Quantum & Cyber": ["IONQ", "RGTI", "QBTS", "QTUM", "QUBT", "RDWR", "WOLF", "CRWD", "PANW", "ZS", "FTNT"],
     "🚀 Space & Defense": ["RKLB", "LUNR", "KTOS", "VVX", "BA", "LMT", "RTX", "JOBY", "ACHR", "INVZ"],
@@ -92,18 +92,18 @@ if st.button("🚀 הרץ סריקת עומק (Deep Scan)"):
             trend_dist = ((today['Close'] - df['SMA_200'].iloc[-1]) / df['SMA_200'].iloc[-1]) * 100
             trend_status = "Bullish 🐂" if trend_dist > 0 else "Bearish 🐻"
 
-            # 2. לוגיקת האיתותים (V6 Original)
+            # 2. לוגיקת האיתותים (V6 Original - בלי החמרות יתר)
             
             # Dip Buy: ירידה (RSI < 40) במגמה עולה
             is_oversold_uptrend = (rsi < 40) and (trend_dist > 0)
             
-            # Momentum: מניה חזקה (RSI 50-70) שרצה מעל הממוצע
+            # Momentum: מניה חזקה (RSI 50-70) שרצה מעל הממוצע (מעל 10% מרחק)
             is_momentum = (rsi > 50) and (rsi < 70) and (trend_dist > 10) 
             
             # אם יש איתות כלשהו -> הוסף לטבלה
             if sfp_signal or is_oversold_uptrend or is_momentum:
                 
-                stop_loss = today['Low'] * 0.98 
+                stop_loss = today['Low'] * 0.98 # סטופ של 2% מתחת לנמוך היומי
                 
                 sector_name = "General"
                 for sec, tickers in SECTORS.items():
@@ -142,12 +142,13 @@ if st.button("🚀 הרץ סריקת עומק (Deep Scan)"):
         priority = {"🔥 SFP Trap": 1, "📉 Dip Buy": 2, "🚀 Momentum": 3}
         df_results['Sort_Key'] = df_results['Signal'].map(priority)
         
+        # מיון משני לפי RSI (נמוך לגבוה בתוך הקטגוריה)
         df_results = df_results.sort_values(by=['Sort_Key', 'RSI'])
         df_results = df_results.drop(columns=['Sort_Key'])
 
         st.success(f"הסריקה הושלמה! נמצאו {len(results)} הזדמנויות.")
         st.dataframe(df_results, use_container_width=True)
-        st.caption("הנתונים נכונים לסגירת המסחר האחרונה בארה\"ב.")
+        st.caption("הנתונים נכונים לסגירת המסחר האחרונה בארה\"ב (או נתונים חיים אם השוק פתוח).")
     else:
         st.warning("לא נמצאו איתותים חזקים כרגע.")
 
