@@ -4,28 +4,28 @@ import pandas as pd
 import numpy as np
 
 # --- הגדרות מערכת ---
-st.set_page_config(page_title="Market Flow Pro V7 📊", layout="wide")
+st.set_page_config(page_title="Market Flow V8 (Elite) 📊", layout="wide")
 
-# --- כותרת מקצועית ---
+# --- כותרת ---
 col1, col2 = st.columns([3, 1])
 with col1:
-    st.title("⚡ Market Flow: Elite Sniper V7")
-    st.caption("Strict Filtering: Showing only High-Probability Setups")
+    st.title("⚡ Market Flow: Elite Sniper V8")
+    st.caption("Top 10 Opportunities Only | Strict Filtering Mode")
 with col2:
     if st.button("🧹 Refresh Data"):
         st.cache_data.clear()
         st.rerun()
 
-# --- מדריך הצייד ---
-with st.expander("📘 Strategy Guide: How to read the signals?", expanded=False):
+# --- הסבר אסטרטגיה ---
+with st.expander("📘 Strategy Guide (V8 - Strict)", expanded=False):
     st.markdown("""
-    ### 🎯 Decision Matrix (Strict Mode)
+    ### 🎯 Decision Matrix (Top 10 Only)
     
-    | Signal Type | Market Trend | RSI Level | Logic & Action |
-    | :--- | :--- | :--- | :--- |
-    | 🔥 **SFP Trap** | **Bullish 🐂** | **40-55** | **Sniper Entry.** Smart money is trapping shorts. High probability reversal. |
-    | 📉 **Dip Buy** | **Bullish 🐂** | **< 40** | **Value Entry.** Strong stock in a deep correction. Good risk/reward. |
-    | 🚀 **Momentum** | **Bullish 🐂** | **60-75** | **Trend Following.** The stock is flying fast. Only for aggressive traders. |
+    | Signal Type | Logic & Action |
+    | :--- | :--- |
+    | 🔥 **SFP Trap** | **High Priority.** Smart money reversal pattern. Best risk/reward. |
+    | 📉 **Dip Buy** | **Value.** RSI < 38 in an Uptrend. Buying the fear. |
+    | 🚀 **Momentum** | **Trend.** RSI 60-70. Catching the wave (Filtered out RSI > 70). |
     """)
 
 # --- רשימת המעקב המהונדסת ---
@@ -33,7 +33,7 @@ SECTORS = {
     "⚛️ Quantum & Computing": ["IONQ", "RGTI", "QBTS", "QTUM", "QUBT", "RDWR"],
     "🚀 Space & Defense": ["RKLB", "LUNR", "KTOS", "VVX", "BA", "LMT", "RTX", "JOBY", "ACHR"],
     "🔥 AI, Chips & Hardware": ["NVDA", "AMD", "TSM", "AVGO", "ARM", "MU", "INTC", "QCOM", "SMCI", "ANET", "DELL", "HPE", "MSFT", "GOOGL", "META"],
-    "⚙️ Thermal, Ind. & Energy": ["VRT", "MOD", "ASPN", "ETN", "GE", "CAT", "REI", "ENPH", "FSLR", "CAMT"], 
+    "⚙️ Thermal, Ind. & Energy": ["VRT", "MOD", "ASPN", "ETN", "GE", "CAT", "REI", "ENPH", "FSLR", "CAMT", "CEG"], 
     "⛏️ Commodities (Lithium/Copper)": ["FCX", "COPX", "SCCO", "AA", "CENX", "NHYDY", "CLF", "ALB", "MP", "PPTA", "VALE"],
     "🚗 Mobility & Auto Tech": ["RIVN", "INVZ", "MBLY", "UBER", "TSLA", "GGM", "LAZR"],
     "💊 BioTech & Pharma": ["NVO", "LLY", "VRTX", "ZBIO", "AMGN", "PFE", "TEVA", "CRSP"],
@@ -43,7 +43,7 @@ SECTORS = {
 ALL_TICKERS = list(set([ticker for sector in SECTORS.values() for ticker in sector]))
 total_count = len(ALL_TICKERS)
 
-st.info(f"Scanning {total_count} assets with STRICT filtering...")
+st.info(f"Scanning {total_count} assets... Filtering for Top 10 setups.")
 
 # --- פונקציה מוגנת (Cache) ---
 @st.cache_data(ttl=3600)
@@ -57,7 +57,7 @@ def get_data(ticker):
         return pd.DataFrame()
 
 # --- מנוע הסריקה ---
-if st.button("🚀 Run Strict Scan"):
+if st.button("🚀 Run Sniper Scan"):
     results = []
     status_text = st.empty()
     progress_bar = st.progress(0)
@@ -65,7 +65,7 @@ if st.button("🚀 Run Strict Scan"):
     for i, ticker in enumerate(ALL_TICKERS):
         progress = (i + 1) / total_count
         progress_bar.progress(progress)
-        status_text.text(f"Scanning: {ticker}...")
+        status_text.text(f"Analyzing: {ticker}...")
         
         df = get_data(ticker)
         
@@ -80,7 +80,7 @@ if st.button("🚀 Run Strict Scan"):
             today = df.iloc[-1]
             
             # 3. איתותים
-            # SFP (מלכודת נזילות) - מחמיר
+            # SFP (הכי חזק)
             sfp_signal = (today['Low'] < prev_low_20) and (today['Close'] > prev_low_20)
             
             # RSI
@@ -90,17 +90,17 @@ if st.button("🚀 Run Strict Scan"):
             rs = gain / loss
             rsi = 100 - (100 / (1 + rs)).iloc[-1]
             
-            # מרחק מממוצע 200 (מגמה)
+            # מגמה
             trend_dist = ((today['Close'] - df['SMA_200'].iloc[-1]) / df['SMA_200'].iloc[-1]) * 100
             trend_status = "Bullish 🐂" if trend_dist > 0 else "Bearish 🐻"
 
-            # 4. לוגיקת סינון (הוחמרה!)
+            # 4. סינון אגרסיבי (V8)
             
-            # Dip Buy: רק אם ה-RSI באמת נמוך (מתחת ל-40) והמגמה הראשית עולה
-            is_oversold_uptrend = (rsi < 40) and (trend_dist > 0)
+            # Dip Buy: החמרה ל-RSI מתחת ל-38 (במקום 40)
+            is_oversold_uptrend = (rsi < 38) and (trend_dist > 0)
             
-            # Momentum: הוחמר! רק אם RSI מעל 60 (חזק) וגם המרחק מהממוצע מעל 10% (טסה)
-            is_momentum = (rsi > 60) and (rsi < 75) and (trend_dist > 10)
+            # Momentum: רק בין 60 ל-70. מעל 70 זה מסוכן מדי.
+            is_momentum = (rsi > 60) and (rsi < 70) and (trend_dist > 5)
             
             if sfp_signal or is_oversold_uptrend or is_momentum:
                 
@@ -126,7 +126,8 @@ if st.button("🚀 Run Strict Scan"):
                     "Price": f"${today['Close']:.2f}",
                     "RSI": f"{rsi:.1f}",
                     "Trend": trend_status,
-                    "Stop Loss": f"${stop_loss:.2f}"
+                    "Stop Loss": f"${stop_loss:.2f}",
+                    "Raw_RSI": rsi # לשמירת מיון פנימי
                 })
         except Exception as e:
             continue
@@ -137,15 +138,24 @@ if st.button("🚀 Run Strict Scan"):
     if results:
         df_results = pd.DataFrame(results)
         
+        # מיון חכם: קודם SFP, אחר כך Dip Buy, ובסוף Momentum
         priority = {"🔥 SFP Trap": 1, "📉 Dip Buy": 2, "🚀 Momentum": 3}
         df_results['Rank'] = df_results['Signal'].map(priority)
-        df_results = df_results.sort_values(by=['Rank', 'RSI'])
-        df_results = df_results.drop(columns=['Rank'])
+        
+        # מיון משני: בתוך Dip Buy, תביא את ה-RSI הכי נמוך קודם
+        df_results = df_results.sort_values(by=['Rank', 'Raw_RSI'], ascending=[True, True])
+        
+        # --- חיתוך התוצאות (The Cut) ---
+        # מציג רק את ה-10 הראשונים!
+        df_results = df_results.head(10)
+        
+        # הסרת עמודות עזר
+        df_results = df_results.drop(columns=['Rank', 'Raw_RSI'])
 
-        st.success(f"Scan Complete! Found {len(results)} ELITE opportunities.")
+        st.success(f"Scan Complete! Showing Top {len(df_results)} setups (Filtered).")
         st.dataframe(df_results, use_container_width=True)
     else:
-        st.warning("No high-probability setups found right now. The market is waiting.")
+        st.warning("No ELITE setups found. Market is confusing.")
 
 with st.expander("🔍 View Watchlist"):
     st.write(SECTORS)
