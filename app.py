@@ -36,14 +36,14 @@ with st.expander("📘 איך לבחור מניה לבדיקה ב-Colab? (טבל
 
 # --- רשימת המעקב המהונדסת ---
 SECTORS = {
-    "⚛️ Quantum & Future": ["IONQ", "RGTI", "QBTS", "QTUM", "WOLF", "CRS", "IREN", "CRSP", "U", "QUBT"],
-    "🚀 Space & Mobility": ["RKLB", "JOBY", "RIVN", "INVZ", "MBLY", "UBER", "TSLA", "LMT", "RTX", "KTOS", "BA"],
-    "🔥 AI, Chips & Cloud": ["NVDA", "AMD", "TSM", "AVGO", "ARM", "MU", "INTC", "QCOM", "SMCI", "ANET", "ORCL", "MSFT", "GOOGL", "AMZN", "META", "DELL", "HPE", "TTD"],
-    "⛏️ Commodities (Copper/Lithium)": ["FCX", "COPX", "SCCO", "AA", "CENX", "NHYDY", "CLF", "ALB", "MP", "GLW", "X", "VALE"],
-    "🛢️ Energy & Infra": ["KMI", "TRGP", "CCJ", "URA", "VLO", "CVX", "XOM", "ENPH", "VRT", "ETN", "OXY", "SLB"],
-    "💊 BioTech & Pharma": ["NVO", "LLY", "VRTX", "ZBIO", "AMGN", "PFE", "TEVA", "BIIB"],
-    "💳 Fintech & Consumer": ["SOFI", "PYPL", "FISV", "NFLX", "COIN", "HOOD", "SQ", "DIS", "SBUX", "NKE"],
-    "💾 Storage & Cyber": ["WDC", "PSTG", "CRWD", "PANW", "CHTR", "VOD", "ZS", "FTNT"]
+      "⚛️ Quantum & Computing": ["IONQ", "RGTI", "QBTS", "QTUM", "QUBT", "RDWR"],
+    "🚀 Space & Defense": ["RKLB", "LUNR", "KTOS", "VVX", "BA", "LMT", "RTX", "JOBY", "ACHR"],
+    "🔥 AI, Chips & Hardware": ["NVDA", "AMD", "TSM", "AVGO", "ARM", "MU", "INTC", "QCOM", "SMCI", "ANET", "DELL", "HPE", "MSFT", "GOOGL", "META"],
+    "⚙️ Thermal, Ind. & Energy": ["VRT", "MOD", "ASPN", "ETN", "GE", "CAT", "REI", "ENPH", "FSLR", "CAMT"], 
+    "⛏️ Commodities (Lithium/Copper)": ["FCX", "COPX", "SCCO", "AA", "CENX", "NHYDY", "CLF", "ALB", "MP", "PPTA", "VALE"],
+    "🚗 Mobility & Auto Tech": ["RIVN", "INVZ", "MBLY", "UBER", "TSLA", "GGM", "LAZR"],
+    "💊 BioTech & Pharma": ["NVO", "LLY", "VRTX", "ZBIO", "AMGN", "PFE", "TEVA", "CRSP"],
+    "💳 Fintech & Software": ["SOFI", "PYPL", "FISV", "NFLX", "COIN", "HOOD", "SQ", "TTD", "PLTR", "CRWD", "PANW", "VOD", "WDC"]
 }
 
 # איחוד כל הרשימות
