@@ -5,15 +5,15 @@ import numpy as np
 from datetime import datetime
 
 # --- הגדרות ---
-st.set_page_config(page_title="Global Sniper V6.2 🌍", layout="wide")
+st.set_page_config(page_title="Global Sniper V6.3 🌍", layout="wide")
 
 # כותרת עם כפתור רענון
 col1, col2 = st.columns([3, 1])
 with col1:
-    st.title("🌍 Global Sniper V6.2: Expansion Pack")
-    st.caption("מערכת סריקה מורחבת: 150+ מניות בזמן אמת")
+    st.title("🌍 Global Sniper V6.3: Fixed Edition")
+    st.caption("מערכת סריקה מורחבת: 150+ מניות (עם תיקון חישוב היסטורי)")
 with col2:
-    if st.button("🔄 רענן נתונים עכשיו"):
+    if st.button("🔄 רענן נתונים (Force Refresh)"):
         st.cache_data.clear()
         st.rerun()
 
@@ -52,8 +52,8 @@ st.info(f"📡 המערכת סורקת {total_count} מניות בזמן אמת.
 @st.cache_data(ttl=300)
 def get_data(ticker):
     try:
-        # משיכה מהירה של 5 ימים
-        df = yf.download(ticker, period="5d", interval="1d", progress=False, auto_adjust=True)
+        # חזרנו ל-1 שנה כדי שיהיה מספיק מידע לחישוב RSI ו-SMA
+        df = yf.download(ticker, period="1y", interval="1d", progress=False, auto_adjust=True)
         return df
     except:
         return pd.DataFrame()
@@ -71,21 +71,23 @@ if st.button("🚀 הרץ סריקת עומק (Deep Scan)"):
         
         df = get_data(ticker)
         
-        if len(df) < 5: continue 
+        # צריך לפחות 200 יום לחישוב מדויק, אבל נסתפק ב-30 כדי שהקוד לא יקרוס
+        if len(df) < 30: continue 
 
         try:
             # חישובים הנדסיים
+            # SMA 200 (או פחות אם המניה חדשה)
             sma_window = 200 if len(df) >= 200 else len(df)
             df['SMA_200'] = df['Close'].rolling(sma_window).mean()
             
             # SFP Logic
-            prev_low_20 = df['Low'].shift(1).rolling(window=min(20, len(df))).min().iloc[-1]
+            prev_low_20 = df['Low'].shift(1).rolling(window=20).min().iloc[-1]
             today = df.iloc[-1]
             last_date = today.name.strftime('%Y-%m-%d')
 
             sfp_signal = (today['Low'] < prev_low_20) and (today['Close'] > prev_low_20)
             
-            # RSI Logic
+            # RSI Logic (דורש 14 יום אחורה)
             delta = df['Close'].diff()
             gain = (delta.where(delta > 0, 0)).rolling(14).mean()
             loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
@@ -96,11 +98,11 @@ if st.button("🚀 הרץ סריקת עומק (Deep Scan)"):
             trend_dist = ((today['Close'] - df['SMA_200'].iloc[-1]) / df['SMA_200'].iloc[-1]) * 100
             trend_status = "Bullish 🐂" if trend_dist > 0 else "Bearish 🐻"
 
-            # תנאי סף
+            # תנאי סף לאיתותים
             is_oversold_uptrend = (rsi < 40) and (trend_dist > 0)
             is_momentum = (rsi > 50) and (rsi < 70) and (trend_dist > 10) 
             
-            # בדיקה מיוחדת לסקטורים "חמים"
+            # בונוס לסקטורים חמים
             is_hot_sector = ticker in SECTORS["🔥 AI, Chips & Hardware"] or ticker in SECTORS["🪙 Crypto & Fintech"]
 
             if sfp_signal or is_oversold_uptrend or (is_momentum and is_hot_sector):
@@ -139,12 +141,12 @@ if st.button("🚀 הרץ סריקת עומק (Deep Scan)"):
     if results:
         df_results = pd.DataFrame(results)
         
-        # מיון
+        # מיון חכם
         df_results['Sort_Key'] = df_results['Signal'].apply(lambda x: 1 if "SFP" in x else (2 if "Dip" in x else 3))
         df_results = df_results.sort_values(by=['Sort_Key', 'RSI'])
         df_results = df_results.drop(columns=['Sort_Key'])
 
-        st.success(f"הסריקה הושלמה! נמצאו {len(results)} הזדמנויות מתוך {total_count} מניות.")
+        st.success(f"הסריקה הושלמה! נמצאו {len(results)} הזדמנויות.")
         st.dataframe(df_results, use_container_width=True, hide_index=True)
     else:
         st.warning("לא נמצאו איתותים חזקים כרגע. השוק רגוע.")
