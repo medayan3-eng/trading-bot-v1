@@ -5,13 +5,13 @@ import numpy as np
 from datetime import datetime
 
 # --- הגדרות ---
-st.set_page_config(page_title="Global Sniper V7 🌍", layout="wide")
+st.set_page_config(page_title="Global Sniper V7 (Non-S&P)", layout="wide")
 
 # כותרת עם כפתור רענון
 col1, col2 = st.columns([3, 1])
 with col1:
-    st.title("🌍 Global Sniper V7: Elite Edition")
-    st.caption("מערכת סריקה: 2026 Themes, AI, Defense, Trump Trade & Crypto")
+    st.title("🌍 Global Sniper V7: Underdog Edition")
+    st.caption("מערכת סריקה: מניות צמיחה, Small Caps, והזדמנויות מחוץ ל-S&P 500")
 with col2:
     if st.button("🧹 נקה זיכרון (Force Refresh)"):
         st.cache_data.clear()
@@ -22,30 +22,51 @@ st.sidebar.write(f"🕒 סריקה אחרונה: {datetime.now().strftime('%H:%M
 # --- מדריך הצייד ---
 with st.expander("📘 מטריצת קבלת החלטות (תנאים מוקשחים)", expanded=False):
     st.markdown("""
-    | דירוג | סוג האיתות | RSI | תנאי מגמה (חדש!) | מסקנה |
+    | דירוג | סוג האיתות | RSI | תנאי מגמה | מסקנה |
     | :--- | :--- | :--- | :--- | :--- |
     | 🥇 **יהלום** | 🔥 SFP Trap | 40-50 | **חובה** מעל הממוצע 200 | **חובה לבדוק ב-Colab!** |
     | 🥈 **חזק** | 📉 Dip Buy | **< 38** | **חובה** מעל 1.5% מממוצע 200 | **בדיקה מומלצת.** |
     | 🥉 **מומנטום** | 🚀 Momentum | 50-70 | **חובה** מעל 10% מממוצע 200 | **הצטרפות לגל.** |
     """)
 
-# --- רשימת המעקב המהונדסת (כולל 50+ מניות חדשות ל-2026) ---
+# --- רשימת המעקב החדשה (ללא S&P 500) ---
+# נבחרו מניות עם ווליום גבוה, תנודתיות בריאה ופוטנציאל צמיחה
 SECTORS = {
-    "⚛️ Quantum & Cyber": ["IONQ", "RGTI", "QBTS", "QTUM", "QUBT", "RDWR", "CYBR", "PANW", "CRWD", "ZS", "FTNT", "NET", "OKTA", "S"],
-    "🚀 Defense & War (2026)": ["RKLB", "LUNR", "KTOS", "VVX", "BA", "LMT", "RTX", "JOBY", "ACHR", "BKSY", "SPAI", "PSN", "AXON", "GD", "NOC", "HII", "LDOS", "PLTR"],
-    "🔥 AI, Chips & Data": ["NVDA", "AMD", "TSM", "AVGO", "ARM", "MU", "INTC", "QCOM", "SMCI", "ANET", "DELL", "HPE", "MSFT", "GOOGL", "META", "NNDM", "AMKR", "STX", "ORCL", "TTMI", "WDC", "TSEM", "PSTG", "IBM", "VRT"],
-    "⚡ Energy & Trump Trade": ["MOD", "ASPN", "ETN", "GE", "CAT", "REI", "ENPH", "FSLR", "CAMT", "FLR", "NRGV", "PESI", "FLS", "OII", "BKR", "STRL", "NFE", "NNE", "SEDG", "PLUG", "XOM", "CVX", "OXY", "KMI", "HAL", "SLB"], 
-    "⛏️ Commodities & Gold": ["FCX", "COPX", "SCCO", "AA", "CENX", "NHYDY", "CLF", "ALB", "MP", "PPTA", "VALE", "ABAT", "UUUU", "ZIM", "GLD", "NEM", "GOLD"],
-    "🚗 Mobility & Auto": ["RIVN", "INVZ", "MBLY", "UBER", "TSLA", "GGM", "LAZR", "NIO", "XPEV", "LCID", "GM", "F"],
-    "💊 BioTech & Health": ["NVO", "LLY", "VRTX", "ZBIO", "AMGN", "PFE", "TEVA", "CRSP", "MRNA", "UNH", "JNJ", "ABBV", "BMY"],
-    "💳 Fintech & Crypto": ["SOFI", "PYPL", "FISV", "NFLX", "COIN", "HOOD", "SQ", "TTD", "PANW", "VOD", "CLBT", "MELI", "DRI", "TGT", "MSTR", "MARA", "RIOT", "CLSK", "IBIT", "JPM", "GS", "MS", "C"]
+    "⚛️ Emerging Tech & Quantum": [
+        "IONQ", "RGTI", "QBTS", "QUBT", "D-WAVE", "RDWR", "LAZR", "INVZ", "MVIS", 
+        "HIMX", "KOPN", "VUZI", "EMAN", "PLTR", "PATH", "AI", "SOUN", "BBAI"
+    ],
+    "🚀 Space & Speculative Defense": [
+        "RKLB", "LUNR", "ASTS", "SPCE", "VORB", "RDBX", "SPIR", "BKSY", "PL", 
+        "LLAP", "SIDU", "MNTS", "JOBY", "ACHR", "EVTL", "EH"
+    ],
+    "💊 BioTech (High Volatility)": [
+        "CRSP", "NTLA", "BEAM", "EDIT", "PACB", "TXG", "DNA", "SDGR", "RXRX", 
+        "NVTA", "BNGO", "SENS", "OCGN", "SESN", "CTXR", "ATOS", "JAGX", "VXRT"
+    ],
+    "⚡ Clean Energy & EV (Non-Major)": [
+        "PLUG", "FCEL", "BE", "BLDP", "NKLA", "HYZN", "WKHS", "RIDE", "GOEV", 
+        "MULN", "CENN", "SOL", "JKS", "DQ", "CSIQ", "RUN", "NOVA", "SPWR"
+    ], 
+    "⛏️ Rare Earths & Lithium (Miners)": [
+        "MP", "LAC", "LTHM", "SGML", "PLL", "SLI", "ABAT", "TMC", "UEC", "UUUU", 
+        "DNN", "NXE", "CCJ", "LODE", "HYMC", "AUY"
+    ],
+    "💳 Fintech, Crypto & Growth": [
+        "SOFI", "UPST", "AFRM", "LC", "MQ", "HOOD", "COIN", "MARA", "RIOT", 
+        "HUT", "BITF", "HIVE", "CLSK", "MSTR", "SI", "BKKT", "OPAD", "OPEN"
+    ],
+    "🎮 Gaming, Metaverse & Penny Favorites": [
+        "U", "RBLX", "DKNG", "PENN", "FUBO", "SKLZ", "GNUS", "BB", "AMC", "GME", 
+        "KOSS", "EXPR", "TLRY", "SNDL", "CGC", "ACB", "CRON"
+    ]
 }
 
 # איחוד כל הרשימות
 ALL_TICKERS = list(set([ticker for sector in SECTORS.values() for ticker in sector]))
 total_count = len(ALL_TICKERS)
 
-st.info(f"📡 המערכת סורקת {total_count} מניות (כולל מניות מלחמה, אנרגיה ו-AI)...")
+st.info(f"📡 המערכת סורקת {total_count} מניות צמיחה ו-Small Caps (מחוץ ל-S&P 500)...")
 
 # --- פונקציה מוגנת (Cache) ---
 @st.cache_data(ttl=300)
@@ -71,7 +92,9 @@ if st.button("🚀 הרץ סריקת עומק (Deep Scan)"):
         
         df = get_data(ticker)
         
+        # סינון: צריך לפחות חודש של דאטה ומחיר מינימלי של 1 דולר (כדי להימנע מזבל מוחלט)
         if len(df) < 30: continue 
+        if df['Close'].iloc[-1] < 0.50: continue # סינון מניות מתחת לחצי דולר
 
         try:
             # --- המנוע ההנדסי ---
@@ -97,18 +120,14 @@ if st.button("🚀 הרץ סריקת עומק (Deep Scan)"):
 
             # --- תנאים מוקשחים (V7 Logic) ---
             
-            # 1. SFP: דורש שהמניה לא תהיה בהתרסקות טוטאלית (לפחות לא רחוקה מדי מהממוצע)
             is_sfp = sfp_signal
-            
-            # 2. Dip Buy מוקשח: RSI מתחת ל-38 (במקום 40) + מרחק של לפחות 1.5% מעל הממוצע
             is_dip = (rsi < 38) and (trend_dist > 1.5)
-            
-            # 3. Momentum: כרגיל, אבל רק בסקטורים חמים
-            is_mom = (rsi > 50) and (rsi < 70) and (trend_dist > 10)
+            # במומנטום של מניות קטנות, אפשר להיות קצת יותר גמישים עם ה-RSI העליון
+            is_mom = (rsi > 50) and (rsi < 75) and (trend_dist > 10)
             
             if is_sfp or is_dip or is_mom:
                 
-                stop_loss = today['Low'] * 0.98 
+                stop_loss = today['Low'] * 0.95 # סטופ רחב יותר (5%) למניות תנודתיות
                 
                 sector_name = "General"
                 for sec, tickers in SECTORS.items():
@@ -145,9 +164,9 @@ if st.button("🚀 הרץ סריקת עומק (Deep Scan)"):
         df_results = df_results.sort_values(by=['Sort_Key', 'RSI'])
         df_results = df_results.drop(columns=['Sort_Key'])
 
-        st.success(f"הסריקה הושלמה! נמצאו {len(results)} הזדמנויות איכותיות.")
+        st.success(f"הסריקה הושלמה! נמצאו {len(results)} הזדמנויות (מניות Small/Mid Cap).")
         st.dataframe(df_results, use_container_width=True)
-        st.info("💡 הוספנו 50 מניות והקשחנו תנאים. התוצאות כעת ממוקדות יותר.")
+        st.info("💡 המניות ברשימה זו הן תנודתיות יותר. הקפד על ניהול סיכונים.")
     else:
         st.warning("לא נמצאו איתותים שעומדים בתנאים המוקשחים.")
 
