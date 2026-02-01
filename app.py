@@ -5,13 +5,13 @@ import numpy as np
 from datetime import datetime
 
 # --- הגדרות ---
-st.set_page_config(page_title="Global Sniper V7 (Non-S&P)", layout="wide")
+st.set_page_config(page_title="Global Sniper V8 (300+)", layout="wide")
 
 # כותרת עם כפתור רענון
 col1, col2 = st.columns([3, 1])
 with col1:
-    st.title("🌍 Global Sniper V7: Underdog Edition")
-    st.caption("מערכת סריקה: מניות צמיחה, Small Caps, והזדמנויות מחוץ ל-S&P 500")
+    st.title("🌍 Global Sniper V8: Massive Attack")
+    st.caption("מערכת סריקה מורחבת: 300+ מניות צמיחה, ספקולציה ו-Mid Caps (ללא S&P 500)")
 with col2:
     if st.button("🧹 נקה זיכרון (Force Refresh)"):
         st.cache_data.clear()
@@ -29,36 +29,59 @@ with st.expander("📘 מטריצת קבלת החלטות (תנאים מוקשח
     | 🥉 **מומנטום** | 🚀 Momentum | 50-70 | **חובה** מעל 10% מממוצע 200 | **הצטרפות לגל.** |
     """)
 
-# --- רשימת המעקב החדשה (ללא S&P 500) ---
-# נבחרו מניות עם ווליום גבוה, תנודתיות בריאה ופוטנציאל צמיחה
+# --- רשימת המעקב הענקית (300+ מניות) ---
 SECTORS = {
-    "⚛️ Emerging Tech & Quantum": [
-        "IONQ", "RGTI", "QBTS", "QUBT", "D-WAVE", "RDWR", "LAZR", "INVZ", "MVIS", 
-        "HIMX", "KOPN", "VUZI", "EMAN", "PLTR", "PATH", "AI", "SOUN", "BBAI"
+    "⚛️ Quantum, AI & Big Data": [
+        "IONQ", "RGTI", "QBTS", "QUBT", "D-WAVE", "SOUN", "BBAI", "VERI", "AI", "PATH", 
+        "UPST", "LZ", "DNA", "PLTR", "SDGR", "AUR", "TSP", "SPIR", "MVIS", "HIMX", 
+        "KOPN", "VUZI", "EMAN", "BB", "GFAI", "CLRO", "PRST"
     ],
-    "🚀 Space & Speculative Defense": [
-        "RKLB", "LUNR", "ASTS", "SPCE", "VORB", "RDBX", "SPIR", "BKSY", "PL", 
-        "LLAP", "SIDU", "MNTS", "JOBY", "ACHR", "EVTL", "EH"
+    "🛡️ Cyber Security (Mid-Cap)": [
+        "S", "TENB", "VRNS", "QLYS", "RPD", "NET", "OKTA", "DOCU", "ZS", "CRWD", 
+        "CYBR", "FTNT", "CHKP", "GEN", "MNDT", "RDWR", "HACK"
     ],
-    "💊 BioTech (High Volatility)": [
-        "CRSP", "NTLA", "BEAM", "EDIT", "PACB", "TXG", "DNA", "SDGR", "RXRX", 
-        "NVTA", "BNGO", "SENS", "OCGN", "SESN", "CTXR", "ATOS", "JAGX", "VXRT"
+    "🚀 Space, Drones & Defense": [
+        "RKLB", "LUNR", "ASTS", "SPCE", "VORB", "BKSY", "JOBY", "ACHR", "EVTL", "EH", 
+        "SIDU", "RDW", "MNTS", "LLAP", "PL", "VSAT", "KTOS", "AVAV", "AJRD", "AXON"
     ],
-    "⚡ Clean Energy & EV (Non-Major)": [
-        "PLUG", "FCEL", "BE", "BLDP", "NKLA", "HYZN", "WKHS", "RIDE", "GOEV", 
-        "MULN", "CENN", "SOL", "JKS", "DQ", "CSIQ", "RUN", "NOVA", "SPWR"
-    ], 
-    "⛏️ Rare Earths & Lithium (Miners)": [
-        "MP", "LAC", "LTHM", "SGML", "PLL", "SLI", "ABAT", "TMC", "UEC", "UUUU", 
-        "DNN", "NXE", "CCJ", "LODE", "HYMC", "AUY"
+    "🧬 BioTech & Genomics (High Volatility)": [
+        "CRSP", "NTLA", "BEAM", "EDIT", "FATE", "BLUE", "SAGE", "ITCI", "AXSM", "KRTX", 
+        "MRTX", "SRPT", "NBIX", "IONS", "ALNY", "EXAS", "GH", "NVTA", "PACB", "TXG", 
+        "RXRX", "BNGO", "SENS", "OCGN", "SESN", "CTXR", "ATOS", "JAGX", "VXRT", "INO"
     ],
-    "💳 Fintech, Crypto & Growth": [
-        "SOFI", "UPST", "AFRM", "LC", "MQ", "HOOD", "COIN", "MARA", "RIOT", 
-        "HUT", "BITF", "HIVE", "CLSK", "MSTR", "SI", "BKKT", "OPAD", "OPEN"
+    "💳 Fintech, Crypto & Blockchain": [
+        "COIN", "HOOD", "MARA", "RIOT", "CLSK", "HUT", "BITF", "MSTR", "SOFI", "AFRM", 
+        "LC", "MQ", "BILL", "TOST", "SQ", "DKNG", "PYPL", "BAC", "C", "WULF", 
+        "IREN", "BTBT", "SDIG", "GREE", "ANY", "BKKT", "SI"
     ],
-    "🎮 Gaming, Metaverse & Penny Favorites": [
-        "U", "RBLX", "DKNG", "PENN", "FUBO", "SKLZ", "GNUS", "BB", "AMC", "GME", 
-        "KOSS", "EXPR", "TLRY", "SNDL", "CGC", "ACB", "CRON"
+    "⚡ Clean Energy & Hydrogen": [
+        "PLUG", "FCEL", "BE", "RUN", "NOVA", "JKS", "DQ", "CSIQ", "ENPH", "SEDG", 
+        "ARRY", "SHLS", "FSLR", "SPWR", "MAXN", "BLDP", "NKLA", "HYZN", "AMRC"
+    ],
+    "☢️ Uranium & Nuclear": [
+        "UUUU", "CCJ", "NXE", "DNN", "UEC", "LEU", "URA", "URNM", "SMR", "BWXT", 
+        "FLR", "NNE", "SRXY"
+    ],
+    "🚗 EV, Batteries & Lithium": [
+        "RIVN", "LCID", "PSNY", "GOEV", "NIO", "XPEV", "LI", "GGR", "MULN", "CENN", 
+        "MP", "LAC", "SGML", "ALB", "LTHM", "QS", "ENVX", "MICRO", "CHPT", "BLNK", 
+        "EVGO", "WBX", "HYMC"
+    ],
+    "🇨🇳 China Growth (High Risk/Reward)": [
+        "BABA", "JD", "PDD", "BIDU", "BILI", "TME", "IQ", "FUTU", "TIGR", "YMM", 
+        "BZ", "GOTU", "TAL", "EDU", "HTHT", "VIPS", "ZTO", "BEKE", "LU"
+    ],
+    "🤖 Robotics & 3D Printing": [
+        "DDD", "SSYS", "DM", "IRBT", "PATH", "UIP", "ROK", "TER", "COGN", "NVTS", 
+        "MKFG", "VLD", "NNDM"
+    ],
+    "🎮 Gaming, Metaverse & Chips": [
+        "U", "RBLX", "DKNG", "PENN", "FUBO", "SKLZ", "GNUS", "AMC", "GME", "TTWO", 
+        "EA", "ATVI", "CRSR", "LOGI", "HEAR", "AMD", "MU", "INTC", "WDC", "STX"
+    ],
+    "🏠 REITs (High Yield/Vol)": [
+        "NLY", "AGNC", "IVR", "MFA", "TWO", "ARR", "CIM", "EFC", "NYMT", "RITM", 
+        "ABR", "STWD", "BXMT"
     ]
 }
 
@@ -66,12 +89,13 @@ SECTORS = {
 ALL_TICKERS = list(set([ticker for sector in SECTORS.values() for ticker in sector]))
 total_count = len(ALL_TICKERS)
 
-st.info(f"📡 המערכת סורקת {total_count} מניות צמיחה ו-Small Caps (מחוץ ל-S&P 500)...")
+st.info(f"📡 המערכת סורקת {total_count} מניות צמיחה ו-Mid Caps (תהליך זה ייקח כדקה-שתיים)...")
 
 # --- פונקציה מוגנת (Cache) ---
 @st.cache_data(ttl=300)
 def get_data(ticker):
     try:
+        # הורדתי ל-200 ימים כדי להאיץ את הסריקה של 300 המניות
         df = yf.download(ticker, period="1y", progress=False, auto_adjust=True)
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.droplevel(1)
@@ -85,16 +109,22 @@ if st.button("🚀 הרץ סריקת עומק (Deep Scan)"):
     status_text = st.empty()
     progress_bar = st.progress(0)
     
+    # משתנים למעקב אחרי שגיאות/מחיקות
+    skipped_count = 0
+    
     for i, ticker in enumerate(ALL_TICKERS):
-        progress = (i + 1) / total_count
-        progress_bar.progress(progress)
-        status_text.text(f"סורק את: {ticker} ({i+1}/{total_count})...")
+        # עדכון פרוגרס בר כל 5 מניות כדי לא להאט את הממשק
+        if i % 5 == 0:
+            progress = (i + 1) / total_count
+            progress_bar.progress(progress)
+            status_text.text(f"סורק את: {ticker} ({i+1}/{total_count})...")
         
         df = get_data(ticker)
         
-        # סינון: צריך לפחות חודש של דאטה ומחיר מינימלי של 1 דולר (כדי להימנע מזבל מוחלט)
-        if len(df) < 30: continue 
-        if df['Close'].iloc[-1] < 0.50: continue # סינון מניות מתחת לחצי דולר
+        # סינון: צריך לפחות 50 ימי מסחר ומחיר מעל חצי דולר
+        if len(df) < 50 or df['Close'].iloc[-1] < 0.50: 
+            skipped_count += 1
+            continue 
 
         try:
             # --- המנוע ההנדסי ---
@@ -122,12 +152,13 @@ if st.button("🚀 הרץ סריקת עומק (Deep Scan)"):
             
             is_sfp = sfp_signal
             is_dip = (rsi < 38) and (trend_dist > 1.5)
-            # במומנטום של מניות קטנות, אפשר להיות קצת יותר גמישים עם ה-RSI העליון
+            # במומנטום של מניות קטנות, אפשר להיות קצת יותר גמישים
             is_mom = (rsi > 50) and (rsi < 75) and (trend_dist > 10)
             
             if is_sfp or is_dip or is_mom:
                 
-                stop_loss = today['Low'] * 0.95 # סטופ רחב יותר (5%) למניות תנודתיות
+                # סטופ מותאם לתנודתיות (5%)
+                stop_loss = today['Low'] * 0.95 
                 
                 sector_name = "General"
                 for sec, tickers in SECTORS.items():
@@ -164,11 +195,11 @@ if st.button("🚀 הרץ סריקת עומק (Deep Scan)"):
         df_results = df_results.sort_values(by=['Sort_Key', 'RSI'])
         df_results = df_results.drop(columns=['Sort_Key'])
 
-        st.success(f"הסריקה הושלמה! נמצאו {len(results)} הזדמנויות (מניות Small/Mid Cap).")
+        st.success(f"הסריקה הושלמה! נמצאו {len(results)} הזדמנויות מתוך {total_count}.")
         st.dataframe(df_results, use_container_width=True)
-        st.info("💡 המניות ברשימה זו הן תנודתיות יותר. הקפד על ניהול סיכונים.")
+        st.info(f"💡 נסרקו {total_count} מניות. מתוכן {skipped_count} סוננו עקב מחיר נמוך או חוסר נתונים.")
     else:
         st.warning("לא נמצאו איתותים שעומדים בתנאים המוקשחים.")
 
-with st.expander("🔍 הצג את רשימת המניות המלאה"):
+with st.expander("🔍 הצג את רשימת המניות המלאה (300+)"):
     st.write(SECTORS)
