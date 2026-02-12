@@ -52,7 +52,7 @@ with st.expander("🧠 איך זה עובד? (לחץ לפרטים)", expanded=Fa
     כל מניה מדורגת 0-100 עם הסבר למה היא עברה
     """)
 
-# --- רשימת מניות מורחבת (300+ מניות עם סינון חכם) ---
+# --- רשימת מניות מורחבת (600+ מניות עם סינון חכם) ---
 SECTORS = {
     "⚛️ Quantum, AI & Big Data": [
         "IONQ", "RGTI", "QBTS", "QUBT", "ARQQ", "SOUN", "BBAI", "VERI", "AI", "PATH", 
@@ -68,25 +68,25 @@ SECTORS = {
     "🚀 Space, Drones & Defense": [
         "RKLB", "LUNR", "ASTS", "SPCE", "VORB", "BKSY", "JOBY", "ACHR", "EVTL", "EH", 
         "SIDU", "RDW", "MNTS", "LLAP", "PL", "VSAT", "KTOS", "AVAV", "AJRD", "AXON",
-        "LMT", "NOC", "LHX", "GD", "RTX", "TDG", "HII"
+        "LMT", "NOC", "LHX", "GD", "RTX", "TDG", "HII", "BA", "HON"
     ],
     "🧬 BioTech & Genomics": [
         "CRSP", "NTLA", "BEAM", "EDIT", "FATE", "BLUE", "SAGE", "ITCI", "AXSM", "KRTX", 
         "MRTX", "SRPT", "NBIX", "IONS", "ALNY", "EXAS", "GH", "NVTA", "PACB", "TXG", 
         "RXRX", "BNGO", "SENS", "OCGN", "SESN", "CTXR", "VRTX", "REGN", "BIIB",
         "GILD", "AMGN", "ILMN", "INCY", "TECH", "RGEN", "ARWR", "LGND", "VCYT",
-        "SDGR", "VERV", "PRME", "DRNA", "ABCL"
+        "SDGR", "VERV", "PRME", "DRNA", "ABCL", "BMRN", "UTHR", "RARE", "FOLD"
     ],
     "💳 Fintech, Crypto & Blockchain": [
         "COIN", "HOOD", "MARA", "RIOT", "CLSK", "HUT", "BITF", "MSTR", "SOFI", "AFRM", 
         "LC", "MQ", "BILL", "TOST", "SQ", "DKNG", "PYPL", "NU", "WULF", 
         "IREN", "BTBT", "SDIG", "GREE", "ANY", "BKKT", "SI", "UPST", "PPSI",
-        "DAVE", "OPY", "STNE", "PAGS", "V", "MA"
+        "DAVE", "OPY", "STNE", "PAGS", "V", "MA", "AXP", "DFS", "COF"
     ],
     "⚡ Clean Energy & Solar": [
         "PLUG", "FCEL", "BE", "RUN", "NOVA", "JKS", "DQ", "CSIQ", "ENPH", "SEDG", 
         "ARRY", "SHLS", "FSLR", "SPWR", "MAXN", "BLDP", "NKLA", "HYZN", "AMRC",
-        "NEE", "ICLN", "TAN", "SUNW", "OPTT", "WATT", "PECK", "CLNE"
+        "NEE", "ICLN", "TAN", "SUNW", "OPTT", "WATT", "PECK", "CLNE", "STEM"
     ],
     "☢️ Uranium & Nuclear": [
         "UUUU", "CCJ", "NXE", "DNN", "UEC", "LEU", "URA", "URNM", "SMR", "BWXT", 
@@ -105,32 +105,61 @@ SECTORS = {
     ],
     "🤖 Robotics, 3D Print & Industrial": [
         "DDD", "SSYS", "DM", "IRBT", "PATH", "UIP", "ROK", "TER", "COGN", "NVTS", 
-        "MKFG", "VLD", "NNDM", "MTLS", "XONE", "VJET", "PRLB", "KODK"
+        "MKFG", "VLD", "NNDM", "MTLS", "XONE", "VJET", "PRLB", "KODK", "EMR", "ITW"
     ],
     "🎮 Gaming, Streaming & Entertainment": [
         "U", "RBLX", "DKNG", "PENN", "FUBO", "SKLZ", "GNUS", "AMC", "GME", "TTWO", 
-        "EA", "ATVI", "CRSR", "LOGI", "HEAR", "SONO", "GPRO", "APPS", "VZIO"
+        "EA", "ATVI", "CRSR", "LOGI", "HEAR", "SONO", "GPRO", "APPS", "VZIO", "NFLX", "DIS"
     ],
     "💻 Semiconductors & Chips": [
         "AMD", "NVDA", "INTC", "MU", "AVGO", "MRVL", "QCOM", "TXN", "ADI", "NXPI",
         "AMAT", "LRCX", "KLAC", "ASML", "TSM", "ON", "SWKS", "MPWR", "ARM",
-        "WDC", "STX", "PSTG", "SMCI"
+        "WDC", "STX", "PSTG", "SMCI", "MCHP", "WOLF", "SLAB", "SYNA"
     ],
     "📱 Software & SaaS": [
         "CRM", "ORCL", "ADBE", "NOW", "WDAY", "TEAM", "ZM", "DOCU", "SNOW", "DDOG",
-        "MDB", "ESTC", "CFLT", "GTLB", "PCOR", "DOCN", "FROG", "APPN", "HUBS"
+        "MDB", "ESTC", "CFLT", "GTLB", "PCOR", "DOCN", "FROG", "APPN", "HUBS", "MSFT",
+        "GOOGL", "META", "AMZN", "AAPL"
     ],
     "🏥 HealthTech & Medical Devices": [
         "TDOC", "DOCS", "HIMS", "ONEM", "ACCD", "PHG", "GH", "TMDX", "NTRA", "NVCR",
-        "NVST", "TNDM", "DXCM", "PODD", "ISRG", "ABMD", "SYK", "BSX"
+        "NVST", "TNDM", "DXCM", "PODD", "ISRG", "ABMD", "SYK", "BSX", "JNJ", "PFE", "UNH"
     ],
     "🏠 REITs & Real Estate": [
         "NLY", "AGNC", "IVR", "MFA", "TWO", "ARR", "CIM", "EFC", "NYMT", "RITM", 
-        "ABR", "STWD", "BXMT", "MITT", "DX", "PMT", "EARN"
+        "ABR", "STWD", "BXMT", "MITT", "DX", "PMT", "EARN", "O", "SPG", "AMT"
     ],
     "🛒 E-commerce & Retail Tech": [
         "SHOP", "MELI", "SE", "CPNG", "ETSY", "W", "CHWY", "CVNA", "REAL", "APRN",
-        "BBBY", "OSTK", "PRTS", "GRPN", "BMBL", "MTCH"
+        "BBBY", "OSTK", "PRTS", "GRPN", "BMBL", "MTCH", "WMT", "TGT", "COST"
+    ],
+    "🏦 Megacap Tech (FAANG+)": [
+        "AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "META", "TSLA", "NVDA", "NFLX",
+        "ADBE", "CRM", "ORCL", "INTC", "CSCO", "IBM", "QCOM", "TXN"
+    ],
+    "🏭 Industrial & Manufacturing": [
+        "CAT", "DE", "MMM", "GE", "HON", "UNP", "UPS", "FDX", "BA", "LMT",
+        "RTX", "NOC", "GD", "EMR", "ITW", "PH", "ETN", "CMI", "DOV"
+    ],
+    "⚕️ Healthcare & Pharma": [
+        "JNJ", "UNH", "PFE", "ABBV", "TMO", "ABT", "DHR", "BMY", "LLY", "AMGN",
+        "GILD", "MRK", "CVS", "CI", "HUM", "ANTM", "ZTS", "MCK", "CAH"
+    ],
+    "💰 Financial Services": [
+        "JPM", "BAC", "WFC", "C", "GS", "MS", "SCHW", "BLK", "SPG", "BX",
+        "V", "MA", "AXP", "DFS", "COF", "USB", "PNC", "TFC"
+    ],
+    "🛢️ Energy & Oil": [
+        "XOM", "CVX", "COP", "SLB", "EOG", "MPC", "PSX", "VLO", "OXY", "HAL",
+        "KMI", "WMB", "EPD", "ET", "MRO", "DVN", "FANG", "APA"
+    ],
+    "🥤 Consumer & Retail": [
+        "KO", "PEP", "WMT", "HD", "MCD", "NKE", "SBUX", "TGT", "COST", "LOW",
+        "TJX", "DG", "DLTR", "ROST", "ULTA", "BBY", "M", "JWN"
+    ],
+    "📡 Telecom & Media": [
+        "T", "VZ", "TMUS", "CMCSA", "DIS", "NFLX", "PARA", "WBD", "FOXA", "DISH",
+        "CHTR", "SIRI", "LUMN", "FYBR"
     ]
 }
 
@@ -221,12 +250,12 @@ def calculate_technical_score(df, info):
         return 0, []
 
 def calculate_fundamental_score(info):
-    """חישוב ניקוד פונדמנטלי 0-100"""
+    """חישוב ניקוד פונדמנטלי 0-100 (סלחני לשדות חסרים)"""
     score = 0
     reasons = []
     
     try:
-        # Market Cap
+        # Market Cap - נותן ניקוד בסיס לכולם
         market_cap = info.get('marketCap', 0)
         if market_cap > 10_000_000_000:  # >$10B
             score += 20
@@ -237,23 +266,36 @@ def calculate_fundamental_score(info):
         elif market_cap > 200_000_000:  # >$200M
             score += 10
             reasons.append("🏢 Small Cap")
+        else:
+            # אפילו אם אין marketCap, נותן ניקוד בסיס של 5
+            score += 5
+            reasons.append("💼 Listed")
         
-        # P/E Ratio
-        pe = info.get('trailingPE', None)
+        # P/E Ratio - אופציונלי
+        pe = info.get('trailingPE', None) or info.get('forwardPE', None)
         if pe and 5 < pe < 30:
             score += 20
             reasons.append(f"📊 P/E: {pe:.1f}")
         elif pe and 30 < pe < 50:
             score += 10
             reasons.append(f"📊 P/E: {pe:.1f}")
+        elif pe and pe < 5:
+            score += 5
+            reasons.append(f"📊 P/E: {pe:.1f} (נמוך)")
         elif pe is None or pe < 0:
-            # חברות צמיחה ללא רווח
-            revenue_growth = info.get('revenueGrowth', 0)
+            # חברות צמיחה ללא רווח - נבדוק צמיחה במקום
+            revenue_growth = info.get('revenueGrowth', None) or info.get('quarterlyRevenueGrowth', {}).get('raw', None)
             if revenue_growth and revenue_growth > 0.3:
+                score += 20
+                reasons.append(f"🚀 צמיחה {revenue_growth*100:.0f}%")
+            elif revenue_growth and revenue_growth > 0.15:
                 score += 15
-                reasons.append(f"📈 צמיחה: {revenue_growth*100:.0f}%")
+                reasons.append(f"📈 צמיחה {revenue_growth*100:.0f}%")
+            else:
+                # אפילו בלי נתוני צמיחה, נותן 5 נקודות בסיס
+                score += 5
         
-        # Debt to Equity
+        # Debt to Equity - אופציונלי
         debt_to_equity = info.get('debtToEquity', None)
         if debt_to_equity is not None:
             if debt_to_equity < 50:
@@ -262,9 +304,20 @@ def calculate_fundamental_score(info):
             elif debt_to_equity < 150:
                 score += 10
                 reasons.append("⚖️ חוב סביר")
+            elif debt_to_equity < 300:
+                score += 5
+                reasons.append("⚠️ חוב גבוה")
+        else:
+            # אם אין נתוני חוב, נותן 10 נקודות (נניח שזה OK)
+            score += 10
+            reasons.append("📊 נתונים מוגבלים")
         
-        # Revenue Growth
-        revenue_growth = info.get('revenueGrowth', None)
+        # Revenue Growth - בודק מספר מקורות
+        revenue_growth = (
+            info.get('revenueGrowth', None) or 
+            info.get('earningsGrowth', None) or
+            info.get('earningsQuarterlyGrowth', None)
+        )
         if revenue_growth:
             if revenue_growth > 0.5:
                 score += 20
@@ -275,38 +328,54 @@ def calculate_fundamental_score(info):
             elif revenue_growth > 0.1:
                 score += 10
                 reasons.append(f"➕ צמיחה {revenue_growth*100:.0f}%")
+            elif revenue_growth > 0:
+                score += 5
+                reasons.append(f"➕ צמיחה {revenue_growth*100:.0f}%")
         
-        # Profit Margins
+        # Profit Margins - בונוס אם קיים
         profit_margin = info.get('profitMargins', None)
         if profit_margin and profit_margin > 0.2:
+            score += 15
+            reasons.append(f"💰 רווחיות {profit_margin*100:.0f}%")
+        elif profit_margin and profit_margin > 0.1:
             score += 10
             reasons.append(f"💰 רווחיות {profit_margin*100:.0f}%")
+        elif profit_margin and profit_margin > 0:
+            score += 5
+            reasons.append(f"💰 רווחיות {profit_margin*100:.0f}%")
         
-        return score, reasons
+        # ודא שיש לפחות ניקוד בסיס של 20 אם יש market cap
+        if score < 20 and market_cap > 0:
+            score = 20
+            if not reasons:
+                reasons.append("✓ עוברת סינון בסיסי")
+        
+        return min(score, 100), reasons  # Cap ב-100
         
     except Exception as e:
-        return 0, []
+        # במקרה של שגיאה, תן ניקוד בסיס
+        return 15, ["⚠️ נתונים חלקיים"]
 
 def passes_basic_filters(df, info):
-    """סינון בסיסי - חייב לעבור"""
+    """סינון בסיסי - מחמיר פחות, מסנן רק זבל אמיתי"""
     try:
-        # מחיר
+        # מחיר - רק סנן penny stocks אמיתיות
         current_price = df['Close'].iloc[-1]
-        if current_price < 2:
-            return False, "מחיר < $2"
+        if current_price < 1:  # הורדתי מ-$2 ל-$1
+            return False, "מחיר < $1"
         
-        # שווי שוק
+        # שווי שוק - אם אין נתונים, נסתמך על נפח
         market_cap = info.get('marketCap', 0)
-        if market_cap < 200_000_000:
-            return False, "שווי < $200M"
+        if market_cap > 0 and market_cap < 50_000_000:  # הורדתי מ-200M ל-50M
+            return False, "שווי < $50M"
         
-        # נפח מסחר
+        # נפח מסחר - הורדתי הדרישה
         avg_volume = df['Volume'].rolling(20).mean().iloc[-1]
-        if avg_volume < 500_000:
-            return False, "נפח נמוך"
+        if avg_volume < 100_000:  # הורדתי מ-500K ל-100K
+            return False, "נפח נמוך מדי"
         
-        # מספיק נתונים
-        if len(df) < 100:
+        # מספיק נתונים - הורדתי מ-100 ל-50
+        if len(df) < 50:
             return False, "נתונים לא מספקים"
         
         return True, "עבר סינון בסיסי"
@@ -317,9 +386,9 @@ def passes_basic_filters(df, info):
 # --- ממשק משתמש ---
 # הגדרות סינון
 st.sidebar.header("⚙️ הגדרות סינון")
-min_total_score = st.sidebar.slider("ניקוד מינימלי", 30, 80, 50, 5)
+min_total_score = st.sidebar.slider("ניקוד מינימלי", 20, 80, 40, 5)  # הורדתי מ-50 ל-40
 max_results = st.sidebar.slider("מקסימום תוצאות", 5, 30, 15, 5)
-require_technical_signal = st.sidebar.checkbox("חייב איתות טכני", value=True)
+require_technical_signal = st.sidebar.checkbox("חייב איתות טכני", value=False)  # שניתי מ-True ל-False
 
 if st.button("🚀 סרוק והצג רק את הטובות ביותר", type="primary"):
     results = []
@@ -376,8 +445,8 @@ if st.button("🚀 סרוק והצג רק את הטובות ביותר", type="p
         tech_score, tech_signals = calculate_technical_score(df, info)
         fund_score, fund_reasons = calculate_fundamental_score(info)
         
-        # חייב לעבור רף פונדמנטלי מינימלי
-        if fund_score < 20:
+        # הורדתי את הדרישה מ-20 ל-10 - יותר סלחני
+        if fund_score < 10:
             continue
         
         passed_fundamental += 1
