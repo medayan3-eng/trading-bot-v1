@@ -52,116 +52,79 @@ with st.expander("🧠 איך זה עובד? (לחץ לפרטים)", expanded=Fa
     כל מניה מדורגת 0-100 עם הסבר למה היא עברה
     """)
 
-# --- רשימת מניות מורחבת (600+ מניות עם סינון חכם) ---
+# --- # --- רשימת מניות מורחבת (700+ מניות הכוללת 100 מניות צמיחה מחוץ ל-S&P 500) ---
 SECTORS = {
     "⚛️ Quantum, AI & Big Data": [
         "IONQ", "RGTI", "QBTS", "QUBT", "ARQQ", "SOUN", "BBAI", "VERI", "AI", "PATH", 
         "UPST", "LZ", "DNA", "PLTR", "SDGR", "AUR", "TSP", "SPIR", "MVIS", "HIMX", 
         "KOPN", "VUZI", "EMAN", "BB", "GFAI", "CLRO", "PRST", "SNOW", "DDOG", 
-        "NET", "PANW", "MDB", "ESTC", "CFLT", "S", "ZS"
+        "NET", "PANW", "MDB", "ESTC", "CFLT", "S", "ZS", "C3AI", "DT", "WKME"
     ],
-    "🛡️ Cyber Security": [
-        "CRWD", "S", "TENB", "VRNS", "QLYS", "RPD", "NET", "OKTA", "DOCU", "ZS", 
-        "CYBR", "FTNT", "CHKP", "GEN", "MNDT", "RDWR", "PANW", "SPLK", "FEYE",
-        "SAIL", "YOU", "RSKD", "TENB"
+    "🚀 Emerging Tech & Growth (Non-S&P)": [
+        "DUOL", "MNDY", "GLBE", "SENT", "IOT", "S", "SKLZ", "ASAN", "SMARTS", "FRSH",
+        "TOST", "REMX", "OKTA", "ZSCALER", "DBX", "BOX", "EGHT", "BAND", "FIVN", "PI"
     ],
-    "🚀 Space, Drones & Defense": [
-        "RKLB", "LUNR", "ASTS", "SPCE", "VORB", "BKSY", "JOBY", "ACHR", "EVTL", "EH", 
-        "SIDU", "RDW", "MNTS", "LLAP", "PL", "VSAT", "KTOS", "AVAV", "AJRD", "AXON",
-        "LMT", "NOC", "LHX", "GD", "RTX", "TDG", "HII", "BA", "HON"
-    ],
-    "🧬 BioTech & Genomics": [
+    "🧬 Advanced BioTech": [
         "CRSP", "NTLA", "BEAM", "EDIT", "FATE", "BLUE", "SAGE", "ITCI", "AXSM", "KRTX", 
         "MRTX", "SRPT", "NBIX", "IONS", "ALNY", "EXAS", "GH", "NVTA", "PACB", "TXG", 
         "RXRX", "BNGO", "SENS", "OCGN", "SESN", "CTXR", "VRTX", "REGN", "BIIB",
         "GILD", "AMGN", "ILMN", "INCY", "TECH", "RGEN", "ARWR", "LGND", "VCYT",
-        "SDGR", "VERV", "PRME", "DRNA", "ABCL", "BMRN", "UTHR", "RARE", "FOLD"
+        "SDGR", "VERV", "PRME", "DRNA", "ABCL", "BMRN", "UTHR", "RARE", "FOLD",
+        "RXDX", "VTYX", "CYTK", "MOR", "CRBU", "VERA", "KOD"
     ],
-    "💳 Fintech, Crypto & Blockchain": [
+    "💳 Fintech & Payments": [
         "COIN", "HOOD", "MARA", "RIOT", "CLSK", "HUT", "BITF", "MSTR", "SOFI", "AFRM", 
         "LC", "MQ", "BILL", "TOST", "SQ", "DKNG", "PYPL", "NU", "WULF", 
         "IREN", "BTBT", "SDIG", "GREE", "ANY", "BKKT", "SI", "UPST", "PPSI",
-        "DAVE", "OPY", "STNE", "PAGS", "V", "MA", "AXP", "DFS", "COF"
+        "DAVE", "OPY", "STNE", "PAGS", "FLYR", "PAYO", "MELI", "RELY", "LMND"
     ],
-    "⚡ Clean Energy & Solar": [
+    "⚡ Clean Energy & Materials": [
         "PLUG", "FCEL", "BE", "RUN", "NOVA", "JKS", "DQ", "CSIQ", "ENPH", "SEDG", 
         "ARRY", "SHLS", "FSLR", "SPWR", "MAXN", "BLDP", "NKLA", "HYZN", "AMRC",
-        "NEE", "ICLN", "TAN", "SUNW", "OPTT", "WATT", "PECK", "CLNE", "STEM"
+        "CHPT", "BLNK", "EVGO", "QS", "ENVX", "LAC", "LTHM", "SGML", "MP", "PLL"
     ],
     "☢️ Uranium & Nuclear": [
         "UUUU", "CCJ", "NXE", "DNN", "UEC", "LEU", "URA", "URNM", "SMR", "BWXT", 
         "FLR", "NNE", "SRXY", "UROY", "EU", "URG", "GATO", "PALAF"
     ],
-    "🚗 EV, Batteries & Materials": [
+    "🚗 EV & Future Mobility": [
         "RIVN", "LCID", "PSNY", "GOEV", "NIO", "XPEV", "LI", "GGR", "MULN", "CENN", 
-        "MP", "LAC", "SGML", "ALB", "LTHM", "QS", "ENVX", "CHPT", "BLNK", 
-        "EVGO", "WBX", "HYMC", "TSLA", "F", "GM", "STLA", "FSR", "RIDE",
-        "NKLA", "ARVL", "LEV", "WKHS", "SOLO", "IDEX", "AYRO"
+        "JOBY", "ACHR", "EVTL", "EH", "LAZR", "INVZ", "AEVA", "OUST", "VLDR", "HYZN"
     ],
-    "🇨🇳 China Growth & ADRs": [
+    "🎮 Gaming & Metaverse": [
+        "U", "RBLX", "DKNG", "PENN", "FUBO", "SKLZ", "GNUS", "TTWO", 
+        "CRSR", "LOGI", "HEAR", "SONO", "GPRO", "APPS", "VZIO", "SE", "MTCH"
+    ],
+    "💻 Semiconductors (Growth)": [
+        "AMD", "NVDA", "MU", "MRVL", "ON", "SWKS", "MPWR", "ARM", "WOLF", "SLAB", 
+        "SYNA", "LSCC", "ALTR", "CREE", "INDI", "POWI", "SIMO", "GFS"
+    ],
+    "📦 E-commerce & Logistics": [
+        "SHOP", "MELI", "SE", "CPNG", "ETSY", "W", "CHWY", "CVNA", "RVLV", "FIGS",
+        "DASH", "UBER", "LYFT", "CART", "PINS", "SNOW"
+    ],
+    "🇨🇳 China ADRs": [
         "BABA", "JD", "PDD", "BIDU", "BILI", "TME", "IQ", "FUTU", "TIGR", "YMM", 
-        "BZ", "GOTU", "TAL", "EDU", "HTHT", "VIPS", "ZTO", "BEKE", "LU", "NIO",
-        "XPEV", "LI", "DIDI", "TUYA", "MOGU", "DOYU", "HUYA", "MOMO"
+        "BZ", "GOTU", "TAL", "EDU", "VIPS", "ZTO", "BEKE", "LU", "NIO", "XPEV"
     ],
-    "🤖 Robotics, 3D Print & Industrial": [
-        "DDD", "SSYS", "DM", "IRBT", "PATH", "UIP", "ROK", "TER", "COGN", "NVTS", 
-        "MKFG", "VLD", "NNDM", "MTLS", "XONE", "VJET", "PRLB", "KODK", "EMR", "ITW"
+    "🌍 Future Food & Health": [
+        "BYND", "OTLY", "HIMS", "TDOC", "DOCS", "ALC", "SKIN", "SHLS", "APP", "UPWK"
     ],
-    "🎮 Gaming, Streaming & Entertainment": [
-        "U", "RBLX", "DKNG", "PENN", "FUBO", "SKLZ", "GNUS", "AMC", "GME", "TTWO", 
-        "EA", "ATVI", "CRSR", "LOGI", "HEAR", "SONO", "GPRO", "APPS", "VZIO", "NFLX", "DIS"
+    "🚀 Space & Defense": [
+        "RKLB", "LUNR", "ASTS", "SPCE", "BKSY", "RDW", "PL", "VSAT", "KTOS", "AVAV"
     ],
-    "💻 Semiconductors & Chips": [
-        "AMD", "NVDA", "INTC", "MU", "AVGO", "MRVL", "QCOM", "TXN", "ADI", "NXPI",
-        "AMAT", "LRCX", "KLAC", "ASML", "TSM", "ON", "SWKS", "MPWR", "ARM",
-        "WDC", "STX", "PSTG", "SMCI", "MCHP", "WOLF", "SLAB", "SYNA"
+    "🛡️ Cyber Security": [
+        "CRWD", "S", "TENB", "VRNS", "QLYS", "RPD", "NET", "OKTA", "ZS", 
+        "CYBR", "FTNT", "CHKP", "PANW", "FORG", "SCWX"
     ],
-    "📱 Software & SaaS": [
-        "CRM", "ORCL", "ADBE", "NOW", "WDAY", "TEAM", "ZM", "DOCU", "SNOW", "DDOG",
-        "MDB", "ESTC", "CFLT", "GTLB", "PCOR", "DOCN", "FROG", "APPN", "HUBS", "MSFT",
-        "GOOGL", "META", "AMZN", "AAPL"
+    "🏢 Real Estate & Fintech Tech": [
+        "OPEN", "RDFN", "Z", "EXPI", "COMP", "HOUS", "MTTR", "APP"
     ],
-    "🏥 HealthTech & Medical Devices": [
-        "TDOC", "DOCS", "HIMS", "ONEM", "ACCD", "PHG", "GH", "TMDX", "NTRA", "NVCR",
-        "NVST", "TNDM", "DXCM", "PODD", "ISRG", "ABMD", "SYK", "BSX", "JNJ", "PFE", "UNH"
-    ],
-    "🏠 REITs & Real Estate": [
-        "NLY", "AGNC", "IVR", "MFA", "TWO", "ARR", "CIM", "EFC", "NYMT", "RITM", 
-        "ABR", "STWD", "BXMT", "MITT", "DX", "PMT", "EARN", "O", "SPG", "AMT"
-    ],
-    "🛒 E-commerce & Retail Tech": [
-        "SHOP", "MELI", "SE", "CPNG", "ETSY", "W", "CHWY", "CVNA", "REAL", "APRN",
-        "BBBY", "OSTK", "PRTS", "GRPN", "BMBL", "MTCH", "WMT", "TGT", "COST"
-    ],
-    "🏦 Megacap Tech (FAANG+)": [
-        "AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "META", "TSLA", "NVDA", "NFLX",
-        "ADBE", "CRM", "ORCL", "INTC", "CSCO", "IBM", "QCOM", "TXN"
-    ],
-    "🏭 Industrial & Manufacturing": [
-        "CAT", "DE", "MMM", "GE", "HON", "UNP", "UPS", "FDX", "BA", "LMT",
-        "RTX", "NOC", "GD", "EMR", "ITW", "PH", "ETN", "CMI", "DOV"
-    ],
-    "⚕️ Healthcare & Pharma": [
-        "JNJ", "UNH", "PFE", "ABBV", "TMO", "ABT", "DHR", "BMY", "LLY", "AMGN",
-        "GILD", "MRK", "CVS", "CI", "HUM", "ANTM", "ZTS", "MCK", "CAH"
-    ],
-    "💰 Financial Services": [
-        "JPM", "BAC", "WFC", "C", "GS", "MS", "SCHW", "BLK", "SPG", "BX",
-        "V", "MA", "AXP", "DFS", "COF", "USB", "PNC", "TFC"
-    ],
-    "🛢️ Energy & Oil": [
-        "XOM", "CVX", "COP", "SLB", "EOG", "MPC", "PSX", "VLO", "OXY", "HAL",
-        "KMI", "WMB", "EPD", "ET", "MRO", "DVN", "FANG", "APA"
-    ],
-    "🥤 Consumer & Retail": [
-        "KO", "PEP", "WMT", "HD", "MCD", "NKE", "SBUX", "TGT", "COST", "LOW",
-        "TJX", "DG", "DLTR", "ROST", "ULTA", "BBY", "M", "JWN"
-    ],
-    "📡 Telecom & Media": [
-        "T", "VZ", "TMUS", "CMCSA", "DIS", "NFLX", "PARA", "WBD", "FOXA", "DISH",
-        "CHTR", "SIRI", "LUMN", "FYBR"
+    "💎 Small Cap Gems (Hidden)": [
+        "CELH", "ELF", "SMR", "VRT", "SMCI", "ANET", "SYM", "PLTR", "RGTI", "CLSK"
     ]
 }
+
 
 ALL_TICKERS = list(set([ticker for sector in SECTORS.values() for ticker in sector]))
 total_count = len(ALL_TICKERS)
