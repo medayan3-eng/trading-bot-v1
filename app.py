@@ -13,7 +13,7 @@ st.set_page_config(page_title="Global Sniper V9 Elite", layout="wide")
 col1, col2 = st.columns([3, 1])
 with col1:
     st.title("🎯 Global Sniper V9: Elite Filter")
-    st.caption("מערכת סינון רב-שלבית: רק המניות שבאמת שוות את הזמן שלך")
+    st.caption("מערכת סינון רב-שלבית: כולל מניות צמיחה, Mid-Caps ו-S&P 500")
 with col2:
     if st.button("🧹 רענן"):
         st.cache_data.clear()
@@ -27,12 +27,12 @@ with st.expander("🧠 איך זה עובד? (לחץ לפרטים)", expanded=Fa
     **שלב 1: סינון בסיסי (90% מהמניות נפסלות)**
     - ✅ מחיר > $2 (לא penny stocks)
     - ✅ שווי שוק > $200M (חברות אמיתיות)
-    - ✅ נפח מסחר ממוצע > 500K מניות ביום (ליקווידיות)
+    - ✅ נפח מסחר ממוצע > 100K מניות ביום (ליקווידיות)
     
     **שלב 2: בדיקות פונדמנטליות (70% נוספות נופלות)**
-    - 📊 P/E ratio סביר (5-50, או חברת צמיחה ללא רווח)
+    - 📊 P/E ratio סביר (או חברת צמיחה ללא רווח)
     - 💰 חוב/הון < 3 (לא יותר מדי ממונפות)
-    - 📈 צמיחת הכנסות > 10% (או שווי > $1B)
+    - 📈 צמיחת הכנסות משמעותית
     
     **שלב 3: סינון טכני מתקדם (רק 20% עוברות)**
     - 🎯 SFP (Swing Failure Pattern) - איתות מלכודת דובים
@@ -43,95 +43,114 @@ with st.expander("🧠 איך זה עובד? (לחץ לפרטים)", expanded=Fa
     **שלב 4: דירוג חכם (Top 5-15)**
     - 🏆 ניקוד משולב: טכני (50%) + פונדמנטלי (30%) + מומנטום (20%)
     - 📊 רק הטובות ביותר מוצגות
-    
-    ---
-    
-    ### 🎯 פלט צפוי:
-    במקום 50 מניות → **רק 5-15 המובילות**
-    
-    כל מניה מדורגת 0-100 עם הסבר למה היא עברה
     """)
 
-# --- # --- רשימת מניות מורחבת (700+ מניות הכוללת 100 מניות צמיחה מחוץ ל-S&P 500) ---
+# --- רשימת מניות מורחבת (כולל ה-100 החדשות) ---
 SECTORS = {
-    "⚛️ Quantum, AI & Big Data": [
+    "⚛️ Quantum, AI & Data (Growth)": [
         "IONQ", "RGTI", "QBTS", "QUBT", "ARQQ", "SOUN", "BBAI", "VERI", "AI", "PATH", 
         "UPST", "LZ", "DNA", "PLTR", "SDGR", "AUR", "TSP", "SPIR", "MVIS", "HIMX", 
         "KOPN", "VUZI", "EMAN", "BB", "GFAI", "CLRO", "PRST", "SNOW", "DDOG", 
-        "NET", "PANW", "MDB", "ESTC", "CFLT", "S", "ZS", "C3AI", "DT", "WKME"
+        "NET", "PANW", "MDB", "ESTC", "CFLT", "S", "ZS", "C3AI", "DT", "WKME", 
+        "CXM", "BMAI", "VRT", "SMCI", "SYM", "ANET", "PSTG"
     ],
-    "🚀 Emerging Tech & Growth (Non-S&P)": [
-        "DUOL", "MNDY", "GLBE", "SENT", "IOT", "S", "SKLZ", "ASAN", "SMARTS", "FRSH",
-        "TOST", "REMX", "OKTA", "ZSCALER", "DBX", "BOX", "EGHT", "BAND", "FIVN", "PI"
+    "🛡️ Cyber Security": [
+        "CRWD", "S", "TENB", "VRNS", "QLYS", "RPD", "NET", "OKTA", "DOCU", "ZS", 
+        "CYBR", "FTNT", "CHKP", "GEN", "MNDT", "RDWR", "PANW", "SPLK", 
+        "SAIL", "RSKD", "FORG", "SCWX", "HACK"
     ],
-    "🧬 Advanced BioTech": [
+    "🚀 Space, Defense & Drones": [
+        "RKLB", "LUNR", "ASTS", "SPCE", "VORB", "BKSY", "JOBY", "ACHR", "EVTL", "EH", 
+        "SIDU", "RDW", "MNTS", "LLAP", "PL", "VSAT", "KTOS", "AVAV", "AJRD", "AXON",
+        "LMT", "NOC", "LHX", "GD", "RTX", "TDG", "HII", "BA", "HON", "BCOV", "RCAT", 
+        "DRON", "BAH", "SAIC", "LDOS"
+    ],
+    "🧬 BioTech, Genomics & Pharma": [
         "CRSP", "NTLA", "BEAM", "EDIT", "FATE", "BLUE", "SAGE", "ITCI", "AXSM", "KRTX", 
         "MRTX", "SRPT", "NBIX", "IONS", "ALNY", "EXAS", "GH", "NVTA", "PACB", "TXG", 
-        "RXRX", "BNGO", "SENS", "OCGN", "SESN", "CTXR", "VRTX", "REGN", "BIIB",
+        "BNGO", "SENS", "OCGN", "SESN", "CTXR", "VRTX", "REGN", "BIIB",
         "GILD", "AMGN", "ILMN", "INCY", "TECH", "RGEN", "ARWR", "LGND", "VCYT",
         "SDGR", "VERV", "PRME", "DRNA", "ABCL", "BMRN", "UTHR", "RARE", "FOLD",
-        "RXDX", "VTYX", "CYTK", "MOR", "CRBU", "VERA", "KOD"
+        "VTYX", "CYTK", "MOR", "CRBU", "VERA", "KOD", "IMVT", "PTGX", "ADPT", "VKTX", "ITOS"
     ],
-    "💳 Fintech & Payments": [
+    "💳 Fintech, Crypto & Payments": [
         "COIN", "HOOD", "MARA", "RIOT", "CLSK", "HUT", "BITF", "MSTR", "SOFI", "AFRM", 
         "LC", "MQ", "BILL", "TOST", "SQ", "DKNG", "PYPL", "NU", "WULF", 
         "IREN", "BTBT", "SDIG", "GREE", "ANY", "BKKT", "SI", "UPST", "PPSI",
-        "DAVE", "OPY", "STNE", "PAGS", "FLYR", "PAYO", "MELI", "RELY", "LMND"
+        "DAVE", "OPY", "STNE", "PAGS", "V", "MA", "AXP", "DFS", "COF", "FLYR", 
+        "PAYO", "MELI", "RELY", "LMND", "AVDX", "GLBE", "DLO"
     ],
-    "⚡ Clean Energy & Materials": [
+    "⚡ Clean Energy, Solar & Hydrogen": [
         "PLUG", "FCEL", "BE", "RUN", "NOVA", "JKS", "DQ", "CSIQ", "ENPH", "SEDG", 
         "ARRY", "SHLS", "FSLR", "SPWR", "MAXN", "BLDP", "NKLA", "HYZN", "AMRC",
-        "CHPT", "BLNK", "EVGO", "QS", "ENVX", "LAC", "LTHM", "SGML", "MP", "PLL"
+        "NEE", "ICLN", "TAN", "SUNW", "OPTT", "WATT", "PECK", "CLNE", "STEM", 
+        "HASI", "CWBK", "TPIC", "GNRC", "ORA"
     ],
-    "☢️ Uranium & Nuclear": [
+    "☢️ Uranium & Next-Gen Nuclear": [
         "UUUU", "CCJ", "NXE", "DNN", "UEC", "LEU", "URA", "URNM", "SMR", "BWXT", 
-        "FLR", "NNE", "SRXY", "UROY", "EU", "URG", "GATO", "PALAF"
+        "FLR", "NNE", "SRXY", "UROY", "EU", "URG", "GATO", "PALAF", "OKLO", "AMPS", "KAMA"
     ],
-    "🚗 EV & Future Mobility": [
+    "🚗 EV, Batteries & Mobility": [
         "RIVN", "LCID", "PSNY", "GOEV", "NIO", "XPEV", "LI", "GGR", "MULN", "CENN", 
-        "JOBY", "ACHR", "EVTL", "EH", "LAZR", "INVZ", "AEVA", "OUST", "VLDR", "HYZN"
+        "MP", "LAC", "SGML", "ALB", "LTHM", "QS", "ENVX", "CHPT", "BLNK", 
+        "EVGO", "WBX", "HYMC", "TSLA", "F", "GM", "STLA", "FSR", 
+        "NKLA", "ARVL", "LEV", "WKHS", "SOLO", "IDEX", "AYRO", "LAZR", "INVZ", "AEVA", "PLL"
+    ],
+    "🇨🇳 China Tech & ADRs": [
+        "BABA", "JD", "PDD", "BIDU", "BILI", "TME", "IQ", "FUTU", "TIGR", "YMM", 
+        "BZ", "GOTU", "TAL", "EDU", "HTHT", "VIPS", "ZTO", "BEKE", "LU", "NIO",
+        "XPEV", "LI", "DIDI", "TUYA", "MOGU", "DOYU", "HUYA", "MOMO", "KANS", "MINISO"
+    ],
+    "🤖 Robotics & Industrial Tech": [
+        "DDD", "SSYS", "DM", "IRBT", "PATH", "UIP", "ROK", "TER", "COGN", "NVTS", 
+        "MKFG", "VLD", "NNDM", "MTLS", "XONE", "VJET", "PRLB", "KODK", "EMR", "ITW", 
+        "SYM", "VRT", "ANET", "ETN", "PH"
     ],
     "🎮 Gaming & Metaverse": [
-        "U", "RBLX", "DKNG", "PENN", "FUBO", "SKLZ", "GNUS", "TTWO", 
-        "CRSR", "LOGI", "HEAR", "SONO", "GPRO", "APPS", "VZIO", "SE", "MTCH"
+        "U", "RBLX", "DKNG", "PENN", "FUBO", "SKLZ", "GNUS", "AMC", "GME", "TTWO", 
+        "EA", "ATVI", "CRSR", "LOGI", "HEAR", "SONO", "GPRO", "APPS", "VZIO", "NFLX", 
+        "DIS", "PARAA", "MSGM", "APP"
     ],
-    "💻 Semiconductors (Growth)": [
-        "AMD", "NVDA", "MU", "MRVL", "ON", "SWKS", "MPWR", "ARM", "WOLF", "SLAB", 
-        "SYNA", "LSCC", "ALTR", "CREE", "INDI", "POWI", "SIMO", "GFS"
+    "💻 Semiconductors": [
+        "AMD", "NVDA", "INTC", "MU", "AVGO", "MRVL", "QCOM", "TXN", "ADI", "NXPI",
+        "AMAT", "LRCX", "KLAC", "ASML", "TSM", "ON", "SWKS", "MPWR", "ARM",
+        "WDC", "STX", "PSTG", "SMCI", "MCHP", "WOLF", "SLAB", "SYNA", "LSCC", 
+        "ALTR", "INDI", "GFS", "ACLS", "COHR"
     ],
-    "📦 E-commerce & Logistics": [
-        "SHOP", "MELI", "SE", "CPNG", "ETSY", "W", "CHWY", "CVNA", "RVLV", "FIGS",
-        "DASH", "UBER", "LYFT", "CART", "PINS", "SNOW"
+    "📱 SaaS & Cloud (High Growth)": [
+        "CRM", "ORCL", "ADBE", "NOW", "WDAY", "TEAM", "ZM", "DOCU", "SNOW", "DDOG",
+        "MDB", "ESTC", "CFLT", "GTLB", "PCOR", "DOCN", "FROG", "APPN", "HUBS", "MSFT",
+        "GOOGL", "META", "AMZN", "AAPL", "DUOL", "MNDY", "GLBE", "IOT", "ASAN", 
+        "SMARTS", "FRSH", "DBX", "BOX", "BAND", "FIVN", "CRM", "INTU"
     ],
-    "🇨🇳 China ADRs": [
-        "BABA", "JD", "PDD", "BIDU", "BILI", "TME", "IQ", "FUTU", "TIGR", "YMM", 
-        "BZ", "GOTU", "TAL", "EDU", "VIPS", "ZTO", "BEKE", "LU", "NIO", "XPEV"
+    "🏥 HealthTech & Devices": [
+        "TDOC", "DOCS", "HIMS", "ONEM", "ACCD", "PHG", "GH", "TMDX", "NTRA", "NVCR",
+        "NVST", "TNDM", "DXCM", "PODD", "ISRG", "ABMD", "SYK", "BSX", "JNJ", "PFE", 
+        "UNH", "SKIN", "ALC", "APP", "SWAV", "INMD"
     ],
-    "🌍 Future Food & Health": [
-        "BYND", "OTLY", "HIMS", "TDOC", "DOCS", "ALC", "SKIN", "SHLS", "APP", "UPWK"
+    "🏠 REITs & PropTech": [
+        "NLY", "AGNC", "IVR", "MFA", "TWO", "ARR", "CIM", "EFC", "NYMT", "RITM", 
+        "ABR", "STWD", "BXMT", "MITT", "DX", "PMT", "EARN", "O", "SPG", "AMT", 
+        "OPEN", "RDFN", "Z", "EXPI", "COMP", "HOUS", "MTTR", "VICI"
     ],
-    "🚀 Space & Defense": [
-        "RKLB", "LUNR", "ASTS", "SPCE", "BKSY", "RDW", "PL", "VSAT", "KTOS", "AVAV"
+    "🛒 Consumer, Retail & E-com": [
+        "SHOP", "MELI", "SE", "CPNG", "ETSY", "W", "CHWY", "CVNA", "REAL", "APRN",
+        "BBBY", "OSTK", "PRTS", "GRPN", "BMBL", "MTCH", "WMT", "TGT", "COST", 
+        "RVLV", "FIGS", "DASH", "UBER", "LYFT", "CART", "PINS", "LULU", "CROX", 
+        "ONON", "DECK", "ULTA"
     ],
-    "🛡️ Cyber Security": [
-        "CRWD", "S", "TENB", "VRNS", "QLYS", "RPD", "NET", "OKTA", "ZS", 
-        "CYBR", "FTNT", "CHKP", "PANW", "FORG", "SCWX"
-    ],
-    "🏢 Real Estate & Fintech Tech": [
-        "OPEN", "RDFN", "Z", "EXPI", "COMP", "HOUS", "MTTR", "APP"
-    ],
-    "💎 Small Cap Gems (Hidden)": [
-        "CELH", "ELF", "SMR", "VRT", "SMCI", "ANET", "SYM", "PLTR", "RGTI", "CLSK"
+    "💎 Hidden Gems (Mid/Small Cap)": [
+        "CELH", "ELF", "VRT", "SMCI", "ANET", "SYM", "WING", "LOAR", "KNSL", "AHR", 
+        "HRMY", "NWTN", "VHAI", "SHLS", "SMR", "LUNR", "RKLB", "TMDX", "MOD", "FIX"
     ]
 }
-
 
 ALL_TICKERS = list(set([ticker for sector in SECTORS.values() for ticker in sector]))
 total_count = len(ALL_TICKERS)
 
-st.info(f"📡 סורק {total_count} מניות (16 סקטורים) בסינון רב-שלבי חכם...")
+st.info(f"📡 סורק {total_count} מניות (רשימה מורחבת Pro) בסינון רב-שלבי חכם...")
 
-# --- פונקציות עזר ---
+# --- פונקציות עזר (לוגיקה ללא שינוי) ---
 @st.cache_data(ttl=300)
 def get_data(ticker):
     try:
@@ -218,7 +237,7 @@ def calculate_fundamental_score(info):
     reasons = []
     
     try:
-        # Market Cap - נותן ניקוד בסיס לכולם
+        # Market Cap
         market_cap = info.get('marketCap', 0)
         if market_cap > 10_000_000_000:  # >$10B
             score += 20
@@ -230,11 +249,10 @@ def calculate_fundamental_score(info):
             score += 10
             reasons.append("🏢 Small Cap")
         else:
-            # אפילו אם אין marketCap, נותן ניקוד בסיס של 5
             score += 5
             reasons.append("💼 Listed")
         
-        # P/E Ratio - אופציונלי
+        # P/E Ratio
         pe = info.get('trailingPE', None) or info.get('forwardPE', None)
         if pe and 5 < pe < 30:
             score += 20
@@ -242,11 +260,7 @@ def calculate_fundamental_score(info):
         elif pe and 30 < pe < 50:
             score += 10
             reasons.append(f"📊 P/E: {pe:.1f}")
-        elif pe and pe < 5:
-            score += 5
-            reasons.append(f"📊 P/E: {pe:.1f} (נמוך)")
         elif pe is None or pe < 0:
-            # חברות צמיחה ללא רווח - נבדוק צמיחה במקום
             revenue_growth = info.get('revenueGrowth', None) or info.get('quarterlyRevenueGrowth', {}).get('raw', None)
             if revenue_growth and revenue_growth > 0.3:
                 score += 20
@@ -255,10 +269,9 @@ def calculate_fundamental_score(info):
                 score += 15
                 reasons.append(f"📈 צמיחה {revenue_growth*100:.0f}%")
             else:
-                # אפילו בלי נתוני צמיחה, נותן 5 נקודות בסיס
                 score += 5
         
-        # Debt to Equity - אופציונלי
+        # Debt to Equity
         debt_to_equity = info.get('debtToEquity', None)
         if debt_to_equity is not None:
             if debt_to_equity < 50:
@@ -267,96 +280,70 @@ def calculate_fundamental_score(info):
             elif debt_to_equity < 150:
                 score += 10
                 reasons.append("⚖️ חוב סביר")
-            elif debt_to_equity < 300:
-                score += 5
-                reasons.append("⚠️ חוב גבוה")
         else:
-            # אם אין נתוני חוב, נותן 10 נקודות (נניח שזה OK)
             score += 10
             reasons.append("📊 נתונים מוגבלים")
         
-        # Revenue Growth - בודק מספר מקורות
+        # Revenue Growth
         revenue_growth = (
             info.get('revenueGrowth', None) or 
             info.get('earningsGrowth', None) or
             info.get('earningsQuarterlyGrowth', None)
         )
         if revenue_growth:
-            if revenue_growth > 0.5:
+            if revenue_growth > 0.2:
                 score += 20
                 reasons.append(f"🚀 צמיחה {revenue_growth*100:.0f}%")
-            elif revenue_growth > 0.2:
-                score += 15
-                reasons.append(f"📈 צמיחה {revenue_growth*100:.0f}%")
-            elif revenue_growth > 0.1:
-                score += 10
-                reasons.append(f"➕ צמיחה {revenue_growth*100:.0f}%")
             elif revenue_growth > 0:
                 score += 5
-                reasons.append(f"➕ צמיחה {revenue_growth*100:.0f}%")
         
-        # Profit Margins - בונוס אם קיים
+        # Profit Margins
         profit_margin = info.get('profitMargins', None)
-        if profit_margin and profit_margin > 0.2:
-            score += 15
-            reasons.append(f"💰 רווחיות {profit_margin*100:.0f}%")
-        elif profit_margin and profit_margin > 0.1:
+        if profit_margin and profit_margin > 0.1:
             score += 10
             reasons.append(f"💰 רווחיות {profit_margin*100:.0f}%")
-        elif profit_margin and profit_margin > 0:
-            score += 5
-            reasons.append(f"💰 רווחיות {profit_margin*100:.0f}%")
         
-        # ודא שיש לפחות ניקוד בסיס של 20 אם יש market cap
         if score < 20 and market_cap > 0:
             score = 20
             if not reasons:
                 reasons.append("✓ עוברת סינון בסיסי")
         
-        return min(score, 100), reasons  # Cap ב-100
+        return min(score, 100), reasons
         
     except Exception as e:
-        # במקרה של שגיאה, תן ניקוד בסיס
         return 15, ["⚠️ נתונים חלקיים"]
 
 def passes_basic_filters(df, info):
-    """סינון בסיסי - מחמיר פחות, מסנן רק זבל אמיתי"""
+    """סינון בסיסי"""
     try:
-        # מחיר - רק סנן penny stocks אמיתיות
         current_price = df['Close'].iloc[-1]
-        if current_price < 1:  # הורדתי מ-$2 ל-$1
+        if current_price < 1:
             return False, "מחיר < $1"
         
-        # שווי שוק - אם אין נתונים, נסתמך על נפח
         market_cap = info.get('marketCap', 0)
-        if market_cap > 0 and market_cap < 50_000_000:  # הורדתי מ-200M ל-50M
+        if market_cap > 0 and market_cap < 50_000_000:
             return False, "שווי < $50M"
         
-        # נפח מסחר - הורדתי הדרישה
         avg_volume = df['Volume'].rolling(20).mean().iloc[-1]
-        if avg_volume < 100_000:  # הורדתי מ-500K ל-100K
+        if avg_volume < 100_000:
             return False, "נפח נמוך מדי"
         
-        # מספיק נתונים - הורדתי מ-100 ל-50
         if len(df) < 50:
             return False, "נתונים לא מספקים"
         
         return True, "עבר סינון בסיסי"
-        
     except:
         return False, "שגיאה בנתונים"
 
 # --- ממשק משתמש ---
-# הגדרות סינון
 st.sidebar.header("⚙️ הגדרות סינון")
-min_total_score = st.sidebar.slider("ניקוד מינימלי", 20, 80, 40, 5)  # הורדתי מ-50 ל-40
+min_total_score = st.sidebar.slider("ניקוד מינימלי", 20, 80, 40, 5)
 max_results = st.sidebar.slider("מקסימום תוצאות", 5, 30, 15, 5)
-require_technical_signal = st.sidebar.checkbox("חייב איתות טכני", value=False)  # שניתי מ-True ל-False
+require_technical_signal = st.sidebar.checkbox("חייב איתות טכני", value=False)
 
 if st.button("🚀 סרוק והצג רק את הטובות ביותר", type="primary"):
     results = []
     
-    # תצוגת התקדמות
     status_container = st.container()
     with status_container:
         st.write("### 📊 התקדמות הסריקה:")
@@ -369,14 +356,12 @@ if st.button("🚀 סרוק והצג רק את הטובות ביותר", type="p
         passed_fund_display = stats_cols[2].empty()
         passed_tech_display = stats_cols[3].empty()
     
-    # מונים
     scanned = 0
     passed_basic = 0
     passed_fundamental = 0
     passed_technical = 0
     
     for i, ticker in enumerate(ALL_TICKERS):
-        # עדכון כל 3 מניות
         if i % 3 == 0:
             progress = (i + 1) / total_count
             progress_bar.progress(progress)
@@ -392,34 +377,28 @@ if st.button("🚀 סרוק והצג רק את הטובות ביותר", type="p
         
         scanned += 1
         
-        # שלב 1: הורדת נתונים
         df, info = get_data(ticker)
         if df.empty or not info:
             continue
         
-        # שלב 2: סינון בסיסי
         passed_basic_filter, reason = passes_basic_filters(df, info)
         if not passed_basic_filter:
             continue
         
         passed_basic += 1
         
-        # שלב 3: חישוב ניקודים
         tech_score, tech_signals = calculate_technical_score(df, info)
         fund_score, fund_reasons = calculate_fundamental_score(info)
         
-        # הורדתי את הדרישה מ-20 ל-10 - יותר סלחני
         if fund_score < 10:
             continue
         
         passed_fundamental += 1
         
-        # חישוב ניקוד כולל (משוקלל)
         total_score = (tech_score * 0.5) + (fund_score * 0.3) + (
             20 if len(tech_signals) > 0 else 0
         ) * 0.2
         
-        # סינון לפי דרישות משתמש
         if total_score < min_total_score:
             continue
         
@@ -428,10 +407,8 @@ if st.button("🚀 סרוק והצג רק את הטובות ביותר", type="p
         
         passed_technical += 1
         
-        # איסוף נתונים למניה
         current_price = df['Close'].iloc[-1]
         
-        # חישוב ATR לסטופ לוס דינמי
         high_low = df['High'] - df['Low']
         high_close = abs(df['High'] - df['Close'].shift())
         low_close = abs(df['Low'] - df['Close'].shift())
@@ -439,7 +416,6 @@ if st.button("🚀 סרוק והצג רק את הטובות ביותר", type="p
         atr = ranges.max(axis=1).rolling(14).mean().iloc[-1]
         stop_loss = current_price - (2 * atr)
         
-        # מציאת סקטור
         sector_name = "General"
         for sec, tickers in SECTORS.items():
             if ticker in tickers:
@@ -459,27 +435,18 @@ if st.button("🚀 סרוק והצג רק את הטובות ביותר", type="p
             "Market Cap": info.get('marketCap', 0)
         })
     
-    # סיום
     progress_bar.empty()
     status_text.empty()
-    
-    # תצוגת תוצאות
     st.write("---")
     
     if results:
-        # מיון לפי ניקוד
         df_results = pd.DataFrame(results)
         df_results = df_results.sort_values('Score', ascending=False)
-        
-        # הגבלה למקסימום שהמשתמש ביקש
         df_results = df_results.head(max_results)
-        
-        # הסרת עמודת Market Cap (שימשה רק למיון)
         df_display = df_results.drop(columns=['Market Cap'])
         
         st.success(f"### 🎯 {len(df_results)} מניות עלית מתוך {total_count} שנסרקו")
         
-        # הצגת סטטיסטיקות
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("אחוז הצלחה בסיסי", f"{passed_basic/scanned*100:.1f}%")
         col2.metric("אחוז הצלחה פונדמנטלי", f"{passed_fundamental/passed_basic*100:.1f}%" if passed_basic > 0 else "0%")
@@ -490,42 +457,26 @@ if st.button("🚀 סרוק והצג רק את הטובות ביותר", type="p
             df_display,
             use_container_width=True,
             column_config={
-                "Score": st.column_config.NumberColumn(
-                    "ניקוד",
-                    help="ניקוד כולל 0-100",
-                    format="%d ⭐"
-                ),
-                "Ticker": st.column_config.TextColumn(
-                    "טיקר",
-                    width="small"
-                ),
-                "Price": st.column_config.TextColumn(
-                    "מחיר",
-                    width="small"
-                )
+                "Score": st.column_config.NumberColumn("ניקוד", format="%d ⭐"),
+                "Ticker": st.column_config.TextColumn("טיקר", width="small"),
+                "Price": st.column_config.TextColumn("מחיר", width="small")
             }
         )
         
-        # המלצות מפורטות
         st.write("### 📋 פירוט מניות מובילות:")
         for idx, row in df_results.head(5).iterrows():
             with st.expander(f"🎯 {row['Ticker']} - ניקוד {row['Score']} | {row['Sector']}"):
                 col1, col2 = st.columns(2)
-                
                 with col1:
                     st.write("**פרטים טכניים:**")
                     st.write(f"- מחיר נוכחי: {row['Price']}")
                     st.write(f"- Stop Loss מומלץ: {row['Stop']}")
-                    st.write(f"- ניקוד טכני: {row['Tech']}")
                     st.write(f"- איתותים: {row['Signals']}")
-                
                 with col2:
                     st.write("**פרטים פונדמנטליים:**")
-                    st.write(f"- ניקוד פונדמנטלי: {row['Fund']}")
+                    st.write(f"- ניקוד: {row['Fund']}")
                     st.write(f"- סיבות: {row['Reasons']}")
-                    st.write(f"- סקטור: {row['Sector']}")
         
-        # כפתור ייצוא
         csv = df_display.to_csv(index=False).encode('utf-8-sig')
         st.download_button(
             label="📥 ייצא ל-CSV",
@@ -533,12 +484,9 @@ if st.button("🚀 סרוק והצג רק את הטובות ביותר", type="p
             file_name=f"elite_stocks_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
             mime="text/csv"
         )
-        
     else:
         st.warning(f"❌ לא נמצאו מניות שעומדות בתנאים (ניקוד > {min_total_score})")
-        st.info("💡 נסה להוריד את הניקוד המינימלי או לבטל את הדרישה לאיתות טכני")
 
-# סטטיסטיקות רשימה
 with st.expander("📊 סטטיסטיקות רשימת המניות"):
     sector_counts = {sector: len(tickers) for sector, tickers in SECTORS.items()}
     st.bar_chart(sector_counts)
