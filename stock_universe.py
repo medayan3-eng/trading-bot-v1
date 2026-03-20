@@ -1,99 +1,34 @@
 """
-Stock universe — cleaned, active US stocks only (March 2025).
-Removed all delisted/acquired tickers.
+Stock universe — 129 active stocks from Finviz screener.
+Filters: avg_vol>750K, price>15, beta>1, price near/above MA50.
+All verified active as of March 2025.
 """
 
-FINVIZ_PICKS = [
-    "AAOI", "AEHR", "AMPX", "AXTI", "BE", "BKSY", "CC", "CNTA", "COHR",
-    "COIN", "DOCN", "HIMS", "ICHR", "LASR", "NBIS", "PL", "SNDK",
-    "SRAD", "STX", "TGTX", "TNDM", "UCTT", "UMAC", "WDC", "WULF",
+STOCK_UNIVERSE = [
+    # 1-20
+    "AAOI", "ABVX", "ADEA", "AEHR", "AL", "AMAT", "AMPX", "ARM",
+    "ASX", "ATEN", "AXTI", "BFH", "BKSY", "BKV", "BRX", "BSY",
+    "BTSG", "BURL", "BW", "BWIN",
+    # 21-40
+    "CARG", "CAVA", "CC", "CGNX", "CIEN", "CLDX", "CLMT", "CNK",
+    "CNTA", "COHR", "COHU", "COIN", "CRC", "CVI", "CZR", "DAR",
+    "DDOG", "DFTX", "DLR", "DNLI",
+    # 41-60
+    "DNTH", "DOCN", "DYN", "ENPH", "EXAS", "FDX", "FIVE", "FORM",
+    "FTNT", "GEV", "GLDD", "GLW", "GNRC", "GPRE", "GUSH", "GWRE",
+    "ICHR", "INGM", "IOT", "JBL",
+    # 61-80
+    "JCI", "JHG", "KEYS", "KIM", "KLAC", "KRMN", "KTB", "LASR",
+    "LITE", "LRCX", "MASI", "MOD", "MRNA", "MRVL", "MTZ", "MU",
+    "MUU", "NBIS", "NE", "NET",
+    # 81-100
+    "NFLX", "NFXL", "NSA", "NTAP", "NVT", "NXT", "NYT", "OII",
+    "OS", "OUT", "PARR", "PL", "PLAB", "POWI", "PWR", "RNG",
+    "ROIV", "RSI", "SDRL", "SEDG",
+    # 101-120
+    "SEE", "SEI", "SEM", "SNDK", "SPHR", "SRAD", "STX", "TER",
+    "TGT", "TGTX", "TNDM", "TNGX", "TPH", "TWLO", "UCTT", "UE",
+    "VAL", "VG", "VRE", "VRT",
+    # 121-129
+    "VSAT", "WDC", "WIX", "WULF", "XPO", "YOU", "YPF", "ZD", "ZIM",
 ]
-
-STOCK_UNIVERSE = list(dict.fromkeys(FINVIZ_PICKS + [
-    # Financials
-    "GS", "MS", "JPM", "BAC", "WFC", "C", "AXP", "COF", "DFS", "SYF",
-    "BK", "STT", "SCHW", "HOOD", "ICE", "CME", "CBOE", "ALLY",
-    "RF", "CFG", "HBAN", "KEY", "MTB", "USB", "PNC", "CMA", "FITB",
-    "BX", "KKR", "APO", "ARES", "CG", "TROW", "IVZ", "BEN", "AMG",
-    "MET", "PRU", "AFL", "AIG", "HIG", "TRV", "CB", "ALL", "PGR",
-    "CINF", "WRB", "RE", "RNR", "AIZ", "GL", "UNM", "FNF", "FAF",
-
-    # Technology
-    "IBM", "HPQ", "HPE", "DELL", "CDW", "NTAP", "STX", "WDC",
-    "AMAT", "LRCX", "KLAC", "MCHP", "SWKS", "QRVO", "MPWR",
-    "FSLR", "ENPH", "ON", "WOLF", "AMBA", "SITM",
-    "CRUS", "PLAB", "ONTO", "ACLS",
-    "AKAM", "FTNT", "PANW", "CHKP", "S", "TENB",
-    "QLYS", "PCTY", "PAYC", "EPAM", "GLOB", "EXLS", "CGNX",
-
-    # Healthcare
-    "BMY", "ABBV", "AMGN", "BIIB", "REGN", "VRTX", "ALNY",
-    "INCY", "EXEL", "HALO", "ACAD", "NBIX", "PRGO",
-    "JAZZ", "ANIP", "LNTH",
-    "HCA", "THC", "UHS", "ENSG", "ACHC",
-    "MDT", "BSX", "EW", "STE", "HOLX", "IDXX",
-    "ALGN", "DXCM", "PODD", "TNDM",
-    "CVS", "MCK", "CAH", "ABC", "HSIC",
-
-    # Energy
-    "XOM", "CVX", "COP", "EOG", "DVN", "MRO", "APA", "FANG",
-    "OVV", "SM", "MTDR", "MGY", "CTRA",
-    "SLB", "HAL", "BKR", "NOV", "PTEN", "NE", "RIG",
-    "PSX", "VLO", "MPC", "PBF",
-    "OKE", "WMB", "KMI", "EPD", "PAA", "TRGP", "LNG",
-
-    # Industrials
-    "GE", "HON", "MMM", "EMR", "ETN", "ROK", "PH", "AME", "FAST",
-    "GWW", "SWK", "SNA",
-    "LMT", "RTX", "NOC", "GD", "BA", "HEI", "TDG",
-    "AXON", "CACI", "LDOS", "SAIC", "BAH",
-    "UPS", "FDX", "XPO", "CHRW", "ODFL", "SAIA",
-    "JBHT", "KNX", "WERN",
-    "URI", "BLDR", "MAS",
-
-    # Consumer Discretionary
-    "NKE", "SKX", "CROX", "DECK",
-    "PVH", "RL", "TAP", "STZ", "MO", "PM",
-    "YUM", "QSR", "DRI", "EAT", "TXRH", "JACK", "WEN", "MCD",
-    "SBUX", "DNUT", "SHAK",
-    "AN", "KMX", "LAD", "ABG", "GPI",
-    "TNL", "HGV", "VAC",
-    "BKNG", "EXPE", "ABNB", "UBER", "LYFT", "MTN",
-
-    # Consumer Staples
-    "KO", "PEP", "KHC", "MKC", "CAG", "SJM", "HRL",
-    "TSN", "PPC",
-    "SYY", "PFGC",
-    "CASY", "MUSA",
-
-    # Materials
-    "NUE", "STLD", "RS", "CMC", "CLF", "MT", "AA", "KALU",
-    "FCX", "SCCO", "NEM", "AEM", "WPM", "GOLD", "KGC", "PAAS",
-    "ECL", "PPG", "SHW", "AXTA",
-    "APD", "LIN", "CE", "LYB", "HUN", "EMN", "OLN",
-    "IP", "PKG", "SON", "GEF", "SEE", "ATR", "SLGN",
-
-    # REITs
-    "SPG", "SKT", "KIM", "REG",
-    "EQR", "AVB", "UDR",
-    "ARE", "BXP", "SLG", "VNO",
-    "PLD", "STAG", "EXR", "CUBE", "PSA",
-
-    # Utilities
-    "AEP", "SO", "DUK", "EXC", "XEL", "WEC", "AEE", "CMS", "NI",
-    "OGE", "EVRG", "PNW",
-    "AWK", "WTRG",
-
-    # Communication
-    "VZ", "T", "TMUS",
-    "IPG", "OMC",
-    "AKAM", "CIEN", "IRDM",
-    "NWSA", "NYT",
-
-    # Specialty
-    "CBRE", "JLL",
-    "MC", "LAZ", "EVR", "PJT", "HLI",
-    "RKT", "COOP",
-    "FLO", "JJSF", "FRPT",
-    "ELF", "IPAR",
-]))
