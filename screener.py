@@ -111,7 +111,7 @@ def calculate_indicators(ticker: str, params: dict):
         # ── RSI ───────────────────────────────────────────────────────
         rsi_s       = calculate_rsi(close, params.get('rsi_period', 14))
         current_rsi = float(rsi_s.iloc[-1])
-        rsi_max     = params.get('rsi_max', 45)
+        rsi_max     = params.get('rsi_max', 50)
         if pd.isna(current_rsi) or current_rsi > rsi_max:
             return None
 
@@ -120,15 +120,14 @@ def calculate_indicators(ticker: str, params: dict):
             close, params.get('bb_period', 20), params.get('bb_std', 2.0)
         )
         current_bb_pct = float(bb_pct_s.iloc[-1])
-        # Relaxed: allow up to 0.5 (middle of band) — BB is informational, not hard filter
         if pd.isna(current_bb_pct):
             current_bb_pct = 0.5
+        # BB is informational only — no hard filter here
 
         # ── 4-Week trend ──────────────────────────────────────────────
         trend_4w = get_trend_4weeks(close)
-        # Murphy: must be in uptrend over 4 weeks — keep this but soften to > -2%
-        # (slight pullback in uptrend is fine, that's our entry)
-        if trend_4w < -5.0:
+        # Only reject if massive downtrend (>10% down in 4 weeks)
+        if trend_4w < -10.0:
             return None
 
         # ── Beta ──────────────────────────────────────────────────────
@@ -153,7 +152,8 @@ def calculate_indicators(ticker: str, params: dict):
         except:
             beta = 1.0
 
-        if beta < params.get('min_beta', 0.8):
+        min_beta = params.get('min_beta', 0.5)
+        if min_beta > 0 and beta < min_beta:
             return None
 
         # ── Institutional ownership ───────────────────────────────────
