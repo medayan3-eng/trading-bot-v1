@@ -261,7 +261,7 @@ def render_stock_card(stock, bt_summary=None):
 
 # ══════════════════════════════════════════════
 #  CHART
-# ═════════════════════════════════════════════
+# ══════════════════════════════════════════════
 def render_chart(ticker, params):
     try:
         df = yf.download(ticker, period="6mo", interval="1d", progress=False)
@@ -388,12 +388,22 @@ def main():
         pb = st.progress(0)
         st_txt = st.empty()
         results = []
+        total_scanned = 0
+        fail_no_data = 0
+        fail_price = 0
+        fail_vol = 0
+        fail_ma = 0
+        fail_rsi = 0
+        fail_trend = 0
+        fail_other = 0
 
         def scan_one(ticker):
-            try: return calculate_indicators(ticker, params)
-            except: return None
+            try:
+                return calculate_indicators(ticker, params)
+            except Exception as e:
+                return None
 
-        with ThreadPoolExecutor(max_workers=12) as ex:
+        with ThreadPoolExecutor(max_workers=8) as ex:
             futures = {ex.submit(scan_one, t): t for t in universe}
             done = 0
             for fut in as_completed(futures):
@@ -408,6 +418,9 @@ def main():
         st.session_state.scan_results     = results
         st.session_state.backtest_results = None
         pb.empty(); st_txt.empty()
+        
+        if len(results) == 0:
+            st.warning(f"⚠️ Scanned {len(universe)} stocks — 0 passed. The filters may be too strict for current market conditions. Try: RSI Max=50, uncheck MA200/MA50, Min Beta=0, Min Institutional=0")
 
     # ── STEP 2: BACKTEST (only scanned stocks) ─────────────
     if params['run_backtest']:
@@ -445,13 +458,14 @@ def main():
             st.markdown("---")
 
             cf1, cf2, cf3 = st.columns(3)
-            with cf1: min_score  = st.slider("Min Score", 0, 10, 5)
+            with cf1: min_score  = st.slider("Min Score", 0, 10, 0)
             with cf2: sort_by    = st.selectbox("Sort by", ["Score","RSI (lowest)","Win Rate (backtest)"])
-            with cf3: fresh_only = st.checkbox("Fresh signals only", value=params.get('show_fresh_only', True))
+            with cf3: fresh_only = st.checkbox("Fresh signals only", value=False)
 
             filtered = [r for r in results if r.get('score',0) >= min_score]
             if fresh_only:
                 filtered = [r for r in filtered if r.get('signal_fresh', False)]
+            st.caption(f"🔍 Passed screener: {len(results)} stocks | Showing: {len(filtered)}")
             if sort_by == "RSI (lowest)":
                 filtered.sort(key=lambda x: x.get('rsi',100))
             elif sort_by == "Win Rate (backtest)" and bt_data:
