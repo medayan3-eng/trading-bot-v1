@@ -1,181 +1,228 @@
+"""
+Backtester — runs ONLY on stocks that passed the live screener (Step 1).
+
+Logic:
+- Downloads 1 full year of daily data per ticker
+- Simulates every possible buy/sell signal using the same Murphy criteria
+- A new buy can trigger again after each completed sell (multiple round-trips)
+- To maximise trade count we use a "re-entry allowed after cooldown" approach:
+    * Buy  signal: RSI < rsi_max  AND  BB%B < 0.35  AND  price > MA200  AND  price > MA50*0.98
+    * Sell signal: RSI > 60  OR  BB%B > 0.8  OR  price < MA50 * 0.97
+- Per-stock stats: win_rate, avg_return, best/worst trade, avg hold days
+- Overall aggregate across all scanned tickers
+"""
+
 import yfinance as yf
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
-def calculate_rsi(series, period=14):
-    delta = series.diff()
-    gain = delta.clip(lower=0).rolling(period).mean()
-    loss = (-delta.clip(upper=0)).rolling(period).mean()
-    rs = gain / loss
-    return 100 - (100 / (1 + rs))
+# ─── indicator helpers ──────────────────────────────────────────────────────
+
+def _rsi(s, period):
+    d   = s.diff()
+    g   = d.clip(lower=0).rolling(period).mean()
+    l   = (-d.clip(upper=0)).rolling(period).mean()
+    return 100 - 100 / (1 + g / l)
 
 
-def calculate_bollinger(series, period=20, std_dev=2.0):
-    mid = series.rolling(period).mean()
-    std = series.rolling(period).std()
-    upper = mid + std_dev * std
-    lower = mid - std_dev * std
-    pct_b = (series - lower) / (upper - lower)
-    return upper, mid, lower, pct_b
+def _bb_pct(s, period, std_dev):
+    mid   = s.rolling(period).mean()
+    sigma = s.rolling(period).std()
+    lower = mid - std_dev * sigma
+    upper = mid + std_dev * sigma
+    return (s - lower) / (upper - lower)
 
 
-def generate_signals_historical(df, params):
+# ─── single ticker backtest ─────────────────────────────────────────────────
+
+def _backtest_one(ticker: str, params: dict) -> dict:
     """
-    Generate buy signals on historical data using Murphy criteria.
-    Buy signal: RSI < rsi_max AND BB%B < 0.2 AND price > MA200 AND price > MA50
-    Sell signal (exit): RSI > 60 OR BB%B > 0.8 OR price < MA50
-    """
-    close = df['Close'].squeeze()
-    
-    rsi = calculate_rsi(close, params.get('rsi_period', 14))
-    ma20 = close.rolling(20).mean()
-    ma50 = close.rolling(50).mean()
-    ma200 = close.rolling(200).mean()
-    _, _, _, bb_pct = calculate_bollinger(close, params.get('bb_period', 20), params.get('bb_std', 2.0))
-    
-    signals = pd.DataFrame(index=df.index)
-    signals['close'] = close
-    signals['rsi'] = rsi
-    signals['ma50'] = ma50
-    signals['ma200'] = ma200
-    signals['bb_pct'] = bb_pct
-    
-    # Buy signal: all Murphy criteria met
-    signals['buy'] = (
-        (rsi < params.get('rsi_max', 40)) &
-        (bb_pct < 0.35) &
-        (close > ma200) &
-        (close > ma50 * 0.98)
-    )
-    
-    # Sell signal: overbought or below moving averages
-    signals['sell'] = (
-        (rsi > 60) |
-        (bb_pct > 0.8) |
-        (close < ma50 * 0.97)
-    )
-    
-    return signals
-
-
-def backtest_ticker(ticker, params, forward_days=10):
-    """
-    For a single ticker, find all buy signals in the last year.
-    For each signal, check if price was higher forward_days later.
-    Returns list of signal results.
+    Run a full year of simulated trades on one ticker.
+    Returns per-stock stats + list of individual trade records.
     """
     try:
-        end = datetime.today()
-        start = end - timedelta(days=400)  # a bit more than a year for warmup
-        
-        df = yf.download(ticker, start=start, end=end, interval="1d", 
-                        progress=False, auto_adjust=True)
+        end   = datetime.today()
+        start = end - timedelta(days=400)  # extra buffer for warmup
+
+        df = yf.download(ticker, start=start, end=end,
+                         interval="1d", progress=False, auto_adjust=True)
         if df.empty or len(df) < 60:
-            return []
-        
-        signals = generate_signals_historical(df, params)
-        
-        results = []
-        in_trade = False
-        buy_price = None
-        buy_date = None
-        
-        # Only look at last 365 days
-        cutoff = end - timedelta(days=365)
-        recent_signals = signals[signals.index >= pd.Timestamp(cutoff)]
-        
-        for i, (date, row) in enumerate(recent_signals.iterrows()):
-            if not in_trade and row['buy']:
-                in_trade = True
-                buy_price = row['close']
-                buy_date = date
-            elif in_trade and row['sell']:
-                sell_price = row['close']
-                pct_change = ((sell_price - buy_price) / buy_price) * 100
-                
-                results.append({
-                    'ticker': ticker,
-                    'signal_type': 'BUY→SELL',
-                    'buy_date': buy_date.strftime('%Y-%m-%d'),
-                    'sell_date': date.strftime('%Y-%m-%d'),
-                    'buy_price': round(float(buy_price), 2),
-                    'sell_price': round(float(sell_price), 2),
-                    'pct_change': round(pct_change, 2),
-                    'correct': pct_change > 0,
-                    'rsi_at_buy': round(float(recent_signals.loc[buy_date, 'rsi']), 1) if buy_date in recent_signals.index else None,
-                    'bb_pct_at_buy': round(float(recent_signals.loc[buy_date, 'bb_pct']), 3) if buy_date in recent_signals.index else None,
-                })
-                in_trade = False
-                buy_price = None
-                buy_date = None
-        
-        # If still in trade at end, evaluate vs current price
+            return {}
+
+        close  = df['Close'].squeeze()
+        rsi_p  = params.get('rsi_period', 14)
+        rsi_th = params.get('rsi_max', 40)
+        bb_p   = params.get('bb_period', 20)
+        bb_std = params.get('bb_std', 2.0)
+
+        rsi    = _rsi(close, rsi_p)
+        bb     = _bb_pct(close, bb_p, bb_std)
+        ma50   = close.rolling(50).mean()
+        ma200  = close.rolling(200).mean()
+
+        # Build signal arrays (aligned)
+        buy_sig  = (rsi < rsi_th) & (bb < 0.35) & (close > ma200) & (close > ma50 * 0.98)
+        sell_sig = (rsi > 60) | (bb > 0.8) | (close < ma50 * 0.97)
+
+        # Only trade within last 365 days
+        cutoff  = pd.Timestamp(end - timedelta(days=365))
+        close_r = close[close.index >= cutoff]
+        buy_r   = buy_sig[buy_sig.index >= cutoff]
+        sell_r  = sell_sig[sell_sig.index >= cutoff]
+
+        # ── Simulate all trades ──────────────────────────────────────────
+        trades        = []
+        in_trade      = False
+        buy_price     = None
+        buy_date      = None
+        buy_rsi       = None
+        cooldown_left = 0          # bars to wait before re-entry after a loss
+
+        idx = close_r.index.tolist()
+
+        for i, date in enumerate(idx):
+            if cooldown_left > 0:
+                cooldown_left -= 1
+                continue
+
+            price     = float(close_r.loc[date])
+            is_buy    = bool(buy_r.loc[date])  if date in buy_r.index  else False
+            is_sell   = bool(sell_r.loc[date]) if date in sell_r.index else False
+
+            if not in_trade:
+                if is_buy:
+                    in_trade   = True
+                    buy_price  = price
+                    buy_date   = date
+                    buy_rsi    = float(rsi.loc[date]) if date in rsi.index else None
+
+            else:  # in trade
+                if is_sell:
+                    pct    = (price - buy_price) / buy_price * 100
+                    hold_d = (date - buy_date).days
+                    won    = pct > 0
+
+                    trades.append({
+                        "ticker":     ticker,
+                        "buy_date":   buy_date.strftime('%Y-%m-%d'),
+                        "sell_date":  date.strftime('%Y-%m-%d'),
+                        "buy_price":  round(float(buy_price), 2),
+                        "sell_price": round(float(price), 2),
+                        "return_%":   round(pct, 2),
+                        "hold_days":  hold_d,
+                        "result":     "✅ Win" if won else "❌ Loss",
+                        "rsi_at_buy": round(float(buy_rsi), 1) if buy_rsi else None,
+                    })
+
+                    in_trade  = False
+                    buy_price = None
+                    # Short cooldown after a loss to avoid whipsaws
+                    if not won:
+                        cooldown_left = 3
+
+        # If still open at year-end, mark as open trade
         if in_trade and buy_price is not None:
-            sell_price = float(signals['close'].iloc[-1])
-            pct_change = ((sell_price - buy_price) / buy_price) * 100
-            results.append({
-                'ticker': ticker,
-                'signal_type': 'BUY (open)',
-                'buy_date': buy_date.strftime('%Y-%m-%d'),
-                'sell_date': 'OPEN',
-                'buy_price': round(float(buy_price), 2),
-                'sell_price': round(float(sell_price), 2),
-                'pct_change': round(pct_change, 2),
-                'correct': pct_change > 0,
-                'rsi_at_buy': None,
-                'bb_pct_at_buy': None,
+            last_price = float(close_r.iloc[-1])
+            pct        = (last_price - buy_price) / buy_price * 100
+            hold_d     = (close_r.index[-1] - buy_date).days
+            trades.append({
+                "ticker":     ticker,
+                "buy_date":   buy_date.strftime('%Y-%m-%d'),
+                "sell_date":  "OPEN",
+                "buy_price":  round(float(buy_price), 2),
+                "sell_price": round(float(last_price), 2),
+                "return_%":   round(pct, 2),
+                "hold_days":  hold_d,
+                "result":     "🔵 Open",
+                "rsi_at_buy": round(float(buy_rsi), 1) if buy_rsi else None,
             })
-        
-        return results
-    
+
+        if not trades:
+            return {}
+
+        # ── Per-stock stats ─────────────────────────────────────────────
+        closed = [t for t in trades if t['sell_date'] != "OPEN"]
+        all_r  = [t['return_%'] for t in trades]
+        wins   = [t for t in closed if t['return_%'] > 0]
+        losses = [t for t in closed if t['return_%'] <= 0]
+        win_r  = len(wins) / len(closed) * 100 if closed else 0
+        holds  = [t['hold_days'] for t in trades]
+
+        return {
+            "ticker":      ticker,
+            "trades":      trades,
+            "total_trades": len(trades),
+            "wins":        len(wins),
+            "losses":      len(losses),
+            "win_rate":    round(win_r, 1),
+            "avg_return":  round(float(np.mean(all_r)), 2),
+            "best_trade":  round(float(max(all_r)), 2),
+            "worst_trade": round(float(min(all_r)), 2),
+            "avg_hold_days": round(float(np.mean(holds)), 1),
+        }
+
     except Exception as e:
-        return []
+        return {}
 
 
-def run_backtest(universe, params):
+# ─── public entry point ─────────────────────────────────────────────────────
+
+def run_backtest_on_screened(tickers: list, params: dict,
+                              progress_bar=None, status_text=None) -> dict:
     """
-    Run backtest across a universe of stocks.
-    Returns summary stats + detailed signal list.
+    Run backtest on every ticker in `tickers` (the Step-1 scan results).
+    Returns a dict with:
+      - overall:   aggregate stats
+      - per_stock: dict ticker -> stats
+      - trade_log: flat list of all trades
     """
-    all_results = []
-    
-    for ticker in universe:
-        ticker_results = backtest_ticker(ticker, params)
-        all_results.extend(ticker_results)
-    
-    if not all_results:
-        return {'total': 0, 'correct_buy': 0, 'correct_sell': 0, 'wrong': 0, 'details': []}
-    
-    total = len(all_results)
-    correct = sum(1 for r in all_results if r['correct'])
-    wrong = total - correct
-    
-    # Correct buy = price went up after buy signal
-    correct_buy = sum(1 for r in all_results if r['correct'] and r['pct_change'] > 0)
-    # For sells, we track separately
-    correct_sell = correct_buy  # same metric in this framework
-    
-    # Sort by pct_change descending
-    all_results.sort(key=lambda x: x['pct_change'], reverse=True)
-    
-    # Format for display
-    df_results = pd.DataFrame(all_results)
-    if not df_results.empty:
-        df_results['result'] = df_results['correct'].map({True: '✅ Correct', False: '❌ Wrong'})
-        df_results['pct_change'] = df_results['pct_change'].apply(lambda x: f"{x:+.2f}%")
-        cols = ['ticker', 'buy_date', 'sell_date', 'buy_price', 'sell_price', 'pct_change', 'result', 'rsi_at_buy']
-        df_results = df_results[[c for c in cols if c in df_results.columns]]
-    
-    avg_return = np.mean([r['pct_change'] for r in all_results]) if all_results else 0
-    
-    return {
-        'total': total,
-        'correct_buy': correct_buy,
-        'correct_sell': correct_sell,
-        'wrong': wrong,
-        'win_rate': round(correct / total * 100, 1) if total else 0,
-        'avg_return': round(float(avg_return), 2),
-        'details': df_results.to_dict('records') if not df_results.empty else []
+    per_stock  = {}
+    trade_log  = []
+    done       = 0
+    total      = len(tickers)
+
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        futures = {ex.submit(_backtest_one, t, params): t for t in tickers}
+        for fut in as_completed(futures):
+            done += 1
+            if progress_bar:
+                progress_bar.progress(done / total)
+            if status_text:
+                status_text.caption(f"Backtesting {done}/{total}…")
+            res = fut.result()
+            if res and res.get('total_trades', 0) > 0:
+                ticker = res['ticker']
+                per_stock[ticker] = {
+                    k: res[k] for k in
+                    ['total_trades','wins','losses','win_rate',
+                     'avg_return','best_trade','worst_trade','avg_hold_days']
+                }
+                trade_log.extend(res.get('trades', []))
+
+    # ── Overall aggregate ────────────────────────────────────────────────
+    if not trade_log:
+        return {"overall": {}, "per_stock": {}, "trade_log": []}
+
+    all_returns = [t['return_%'] for t in trade_log]
+    closed      = [t for t in trade_log if t['sell_date'] != "OPEN"]
+    wins_all    = [t for t in closed if t['return_%'] > 0]
+    wr_all      = len(wins_all) / len(closed) * 100 if closed else 0
+
+    overall = {
+        "total_trades": len(trade_log),
+        "wins":         len(wins_all),
+        "losses":       len(closed) - len(wins_all),
+        "win_rate":     round(wr_all, 1),
+        "avg_return":   round(float(np.mean(all_returns)), 2),
+        "best_trade":   round(float(max(all_returns)), 2),
+        "worst_trade":  round(float(min(all_returns)), 2),
+        "tickers_tested": len(per_stock),
     }
+
+    # Sort trade log newest first
+    trade_log.sort(key=lambda x: x['buy_date'], reverse=True)
+
+    return {"overall": overall, "per_stock": per_stock, "trade_log": trade_log}
