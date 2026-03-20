@@ -4,6 +4,22 @@ import numpy as np
 from datetime import datetime, timedelta
 
 
+def get_institutional_ownership(ticker: str) -> float:
+    """
+    Returns institutional ownership % (0-100).
+    Uses yfinance institutional holders data.
+    """
+    try:
+        t = yf.Ticker(ticker)
+        info = t.info
+        inst_pct = info.get('heldPercentInstitutions', None)
+        if inst_pct is not None:
+            return round(float(inst_pct) * 100, 1)
+        return None
+    except:
+        return None
+
+
 def calculate_rsi(series, period=14):
     delta = series.diff()
     gain = delta.clip(lower=0).rolling(period).mean()
@@ -106,7 +122,30 @@ def calculate_indicators(ticker: str, params: dict) -> dict | None:
         if trend_4w <= 0:
             return None  # must be in uptrend
         
-        # Beta (approximate using SPY)
+        # ── Institutional Ownership ──────────────────────────────────
+        inst_pct = get_institutional_ownership(ticker)
+        min_inst = params.get('min_institutional', 0)
+        if min_inst > 0 and (inst_pct is None or inst_pct < min_inst):
+            return None
+
+        # ── Signal Freshness: only pass if TODAY's bar triggers the signal ──
+        # (RSI and BB%B must have crossed the threshold in the LAST 3 days)
+        rsi_series_full = calculate_rsi(close, params['rsi_period'])
+        _, _, _, bb_pct_series = calculate_bollinger(close, params['bb_period'], params['bb_std'])
+        
+        # Check: was the signal NOT active 3 days ago? (i.e., it's fresh)
+        lookback = 3
+        if len(rsi_series_full) > lookback and len(bb_pct_series) > lookback:
+            prev_rsi = float(rsi_series_full.iloc[-lookback-1])
+            prev_bb = float(bb_pct_series.iloc[-lookback-1])
+            signal_is_fresh = (
+                prev_rsi > params['rsi_max'] or  # RSI just crossed below threshold
+                prev_bb > 0.35                    # BB just crossed into oversold zone
+            )
+        else:
+            signal_is_fresh = True  # not enough data, assume fresh
+
+        # ── Beta (approximate using SPY) ─────────────────────────────
         try:
             spy = yf.download("SPY", period="6mo", interval="1d", progress=False, auto_adjust=True)
             if not spy.empty and len(spy) >= 60:
@@ -158,6 +197,16 @@ def calculate_indicators(ticker: str, params: dict) -> dict | None:
         # Volume surge bonus
         if volume_ratio > 1.5: score += 0.5
         
+        # Institutional ownership bonus
+        if inst_pct is not None:
+            if inst_pct >= 60: score += 1.0
+            elif inst_pct >= 40: score += 0.7
+            elif inst_pct >= 30: score += 0.5
+        
+        # Fresh signal bonus
+        if signal_is_fresh:
+            score += 0.5
+
         score = min(10.0, score)
         
         # Get company info
@@ -186,6 +235,9 @@ def calculate_indicators(ticker: str, params: dict) -> dict | None:
             "beta": beta,
             "avg_volume": avg_vol,
             "volume_ratio": volume_ratio,
+            "institutional_pct": inst_pct,
+            "signal_fresh": signal_is_fresh,
+            "signal_date": datetime.today().strftime('%Y-%m-%d'),
             "score": round(score, 1),
             "passes_filter": True
         }
