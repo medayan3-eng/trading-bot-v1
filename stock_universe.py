@@ -1,10 +1,20 @@
 """
-Stock universe: ~500 US stocks, $15+, reasonable volume, beta >= 1 candidates.
+Stock universe: ~500+ US stocks, $15+, reasonable volume, beta >= 1 candidates.
 Excludes mega-popular: NVDA, TSLA, MSFT, AAPL, GOOGL, META, AMZN
 Focus: solid mid-large caps across all sectors with real trading activity.
+Also includes high-beta small caps with strong institutional interest.
 """
 
-STOCK_UNIVERSE = [
+# High-beta / institutionally-backed stocks (from Finviz screens)
+FINVIZ_PICKS = [
+    # From user's Finviz screen (institutional + volume filtered)
+    "AAOI", "AEHR", "AMPX", "AXTI", "BE", "BKSY", "CC", "CNTA", "COHR",
+    "COIN", "DFTX", "DOCN", "HIMS", "ICHR", "KRMN", "LASR", "NBIS",
+    "NXT", "PL", "SNDK", "SRAD", "STX", "TGTX", "TNDM", "UCTT",
+    "UMAC", "WDC", "WULF",
+]
+
+STOCK_UNIVERSE = FINVIZ_PICKS + [
     # Financials
     "GS", "MS", "JPM", "BAC", "WFC", "C", "AXP", "COF", "DFS", "SYF",
     "BK", "STT", "SCHW", "HOOD", "ICE", "CME", "CBOE", "NDAQ", "ALLY",
