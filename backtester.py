@@ -36,7 +36,7 @@ def _bb_pct(s, period, std_dev):
     return (s - lower) / (upper - lower)
 
 
-# ─── single ticker backtest ─────────────────────────────────────────────────
+# ─── single ticker backtest ────────────────────────────────────────────────
 
 def _backtest_one(ticker: str, params: dict) -> dict:
     """
