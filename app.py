@@ -1,493 +1,529 @@
 import streamlit as st
-import yfinance as yf
 import pandas as pd
 import numpy as np
-from datetime import datetime
+import yfinance as yf
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+from datetime import datetime, timedelta
+import requests
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import warnings
 warnings.filterwarnings('ignore')
 
-# --- הגדרות ---
-st.set_page_config(page_title="Global Sniper V9 Elite", layout="wide")
+from screener import run_screener, calculate_indicators
+from backtester import run_backtest
+from news_fetcher import fetch_news
+from stock_universe import STOCK_UNIVERSE
 
-# כותרת
-col1, col2 = st.columns([3, 1])
-with col1:
-    st.title("🎯 Global Sniper V9: Elite Filter")
-    st.caption("מערכת סינון רב-שלבית: כולל מניות צמיחה, Mid-Caps ו-S&P 500")
-with col2:
-    if st.button("🧹 רענן"):
-        st.cache_data.clear()
-        st.rerun()
+st.set_page_config(
+    page_title="Murphy Stock Scanner",
+    page_icon="📈",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# --- מדריך ---
-with st.expander("🧠 איך זה עובד? (לחץ לפרטים)", expanded=False):
-    st.markdown("""
-    ### 🔥 מערכת סינון ב-4 שלבים:
+# Custom CSS
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
     
-    **שלב 1: סינון בסיסי (90% מהמניות נפסלות)**
-    - ✅ מחיר > $2 (לא penny stocks)
-    - ✅ שווי שוק > $200M (חברות אמיתיות)
-    - ✅ נפח מסחר ממוצע > 100K מניות ביום (ליקווידיות)
+    html, body, [class*="css"] {
+        font-family: 'IBM Plex Sans', sans-serif;
+    }
     
-    **שלב 2: בדיקות פונדמנטליות (70% נוספות נופלות)**
-    - 📊 P/E ratio סביר (או חברת צמיחה ללא רווח)
-    - 💰 חוב/הון < 3 (לא יותר מדי ממונפות)
-    - 📈 צמיחת הכנסות משמעותית
+    .stApp {
+        background: #0a0e1a;
+        color: #e0e6f0;
+    }
     
-    **שלב 3: סינון טכני מתקדם (רק 20% עוברות)**
-    - 🎯 SFP (Swing Failure Pattern) - איתות מלכודת דובים
-    - 📉 Dip מוכח - RSI < 35 + מעל ממוצע 200
-    - 🚀 Breakout - פריצת התנגדות 52 שבועות
-    - 💪 Volume Surge - נפח פי 2+ מהממוצע
+    .main-header {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 2.2rem;
+        font-weight: 600;
+        color: #00d4aa;
+        letter-spacing: -1px;
+        margin-bottom: 0.2rem;
+    }
     
-    **שלב 4: דירוג חכם (Top 5-15)**
-    - 🏆 ניקוד משולב: טכני (50%) + פונדמנטלי (30%) + מומנטום (20%)
-    - 📊 רק הטובות ביותר מוצגות
-    """)
+    .sub-header {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.85rem;
+        color: #4a5568;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        margin-bottom: 2rem;
+    }
+    
+    .metric-card {
+        background: #111827;
+        border: 1px solid #1e293b;
+        border-radius: 8px;
+        padding: 1.2rem;
+        margin: 0.3rem 0;
+        border-left: 3px solid #00d4aa;
+    }
+    
+    .stock-card {
+        background: #111827;
+        border: 1px solid #1e293b;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin: 0.5rem 0;
+        transition: all 0.2s ease;
+    }
+    
+    .stock-card:hover {
+        border-color: #00d4aa;
+        box-shadow: 0 0 20px rgba(0, 212, 170, 0.1);
+    }
+    
+    .signal-strong { color: #00d4aa; font-weight: 600; }
+    .signal-medium { color: #f59e0b; font-weight: 600; }
+    .signal-weak { color: #ef4444; font-weight: 600; }
+    
+    .ticker-symbol {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 1.4rem;
+        font-weight: 600;
+        color: #00d4aa;
+    }
+    
+    .price-display {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 1.1rem;
+        color: #e0e6f0;
+    }
+    
+    .badge {
+        display: inline-block;
+        padding: 0.2rem 0.6rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-family: 'IBM Plex Mono', monospace;
+        font-weight: 600;
+        margin: 0.1rem;
+    }
+    
+    .badge-green { background: rgba(0,212,170,0.15); color: #00d4aa; border: 1px solid rgba(0,212,170,0.3); }
+    .badge-yellow { background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
+    .badge-red { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+    .badge-blue { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+    
+    div[data-testid="stSidebar"] {
+        background: #0d1117;
+        border-right: 1px solid #1e293b;
+    }
+    
+    .stButton > button {
+        background: #00d4aa;
+        color: #0a0e1a;
+        font-family: 'IBM Plex Mono', monospace;
+        font-weight: 600;
+        border: none;
+        border-radius: 6px;
+        padding: 0.6rem 1.5rem;
+        letter-spacing: 0.5px;
+        width: 100%;
+    }
+    
+    .stButton > button:hover {
+        background: #00b894;
+        transform: translateY(-1px);
+    }
+    
+    .scan-stat {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 2rem;
+        font-weight: 600;
+        color: #00d4aa;
+    }
+    
+    .scan-label {
+        font-size: 0.75rem;
+        color: #4a5568;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
 
-# --- רשימת מניות מורחבת (כולל ה-100 החדשות) ---
-SECTORS = {
-    "⚛️ Quantum, AI & Data (Growth)": [
-        "IONQ", "RGTI", "QBTS", "QUBT", "ARQQ", "SOUN", "BBAI", "VERI", "AI", "PATH", 
-        "UPST", "LZ", "DNA", "PLTR", "SDGR", "AUR", "TSP", "SPIR", "MVIS", "HIMX", 
-        "KOPN", "VUZI", "EMAN", "BB", "GFAI", "CLRO", "PRST", "SNOW", "DDOG", 
-        "NET", "PANW", "MDB", "ESTC", "CFLT", "S", "ZS", "C3AI", "DT", "WKME", 
-        "CXM", "BMAI", "VRT", "SMCI", "SYM", "ANET", "PSTG"
-    ],
-    "🛡️ Cyber Security": [
-        "CRWD", "S", "TENB", "VRNS", "QLYS", "RPD", "NET", "OKTA", "DOCU", "ZS", 
-        "CYBR", "FTNT", "CHKP", "GEN", "MNDT", "RDWR", "PANW", "SPLK", 
-        "SAIL", "RSKD", "FORG", "SCWX", "HACK"
-    ],
-    "🚀 Space, Defense & Drones": [
-        "RKLB", "LUNR", "ASTS", "SPCE", "VORB", "BKSY", "JOBY", "ACHR", "EVTL", "EH", 
-        "SIDU", "RDW", "MNTS", "LLAP", "PL", "VSAT", "KTOS", "AVAV", "AJRD", "AXON",
-        "LMT", "NOC", "LHX", "GD", "RTX", "TDG", "HII", "BA", "HON", "BCOV", "RCAT", 
-        "DRON", "BAH", "SAIC", "LDOS"
-    ],
-    "🧬 BioTech, Genomics & Pharma": [
-        "CRSP", "NTLA", "BEAM", "EDIT", "FATE", "BLUE", "SAGE", "ITCI", "AXSM", "KRTX", 
-        "MRTX", "SRPT", "NBIX", "IONS", "ALNY", "EXAS", "GH", "NVTA", "PACB", "TXG", 
-        "BNGO", "SENS", "OCGN", "SESN", "CTXR", "VRTX", "REGN", "BIIB",
-        "GILD", "AMGN", "ILMN", "INCY", "TECH", "RGEN", "ARWR", "LGND", "VCYT",
-        "SDGR", "VERV", "PRME", "DRNA", "ABCL", "BMRN", "UTHR", "RARE", "FOLD",
-        "VTYX", "CYTK", "MOR", "CRBU", "VERA", "KOD", "IMVT", "PTGX", "ADPT", "VKTX", "ITOS"
-    ],
-    "💳 Fintech, Crypto & Payments": [
-        "COIN", "HOOD", "MARA", "RIOT", "CLSK", "HUT", "BITF", "MSTR", "SOFI", "AFRM", 
-        "LC", "MQ", "BILL", "TOST", "SQ", "DKNG", "PYPL", "NU", "WULF", 
-        "IREN", "BTBT", "SDIG", "GREE", "ANY", "BKKT", "SI", "UPST", "PPSI",
-        "DAVE", "OPY", "STNE", "PAGS", "V", "MA", "AXP", "DFS", "COF", "FLYR", 
-        "PAYO", "MELI", "RELY", "LMND", "AVDX", "GLBE", "DLO"
-    ],
-    "⚡ Clean Energy, Solar & Hydrogen": [
-        "PLUG", "FCEL", "BE", "RUN", "NOVA", "JKS", "DQ", "CSIQ", "ENPH", "SEDG", 
-        "ARRY", "SHLS", "FSLR", "SPWR", "MAXN", "BLDP", "NKLA", "HYZN", "AMRC",
-        "NEE", "ICLN", "TAN", "SUNW", "OPTT", "WATT", "PECK", "CLNE", "STEM", 
-        "HASI", "CWBK", "TPIC", "GNRC", "ORA"
-    ],
-    "☢️ Uranium & Next-Gen Nuclear": [
-        "UUUU", "CCJ", "NXE", "DNN", "UEC", "LEU", "URA", "URNM", "SMR", "BWXT", 
-        "FLR", "NNE", "SRXY", "UROY", "EU", "URG", "GATO", "PALAF", "OKLO", "AMPS", "KAMA"
-    ],
-    "🚗 EV, Batteries & Mobility": [
-        "RIVN", "LCID", "PSNY", "GOEV", "NIO", "XPEV", "LI", "GGR", "MULN", "CENN", 
-        "MP", "LAC", "SGML", "ALB", "LTHM", "QS", "ENVX", "CHPT", "BLNK", 
-        "EVGO", "WBX", "HYMC", "TSLA", "F", "GM", "STLA", "FSR", 
-        "NKLA", "ARVL", "LEV", "WKHS", "SOLO", "IDEX", "AYRO", "LAZR", "INVZ", "AEVA", "PLL"
-    ],
-    "🇨🇳 China Tech & ADRs": [
-        "BABA", "JD", "PDD", "BIDU", "BILI", "TME", "IQ", "FUTU", "TIGR", "YMM", 
-        "BZ", "GOTU", "TAL", "EDU", "HTHT", "VIPS", "ZTO", "BEKE", "LU", "NIO",
-        "XPEV", "LI", "DIDI", "TUYA", "MOGU", "DOYU", "HUYA", "MOMO", "KANS", "MINISO"
-    ],
-    "🤖 Robotics & Industrial Tech": [
-        "DDD", "SSYS", "DM", "IRBT", "PATH", "UIP", "ROK", "TER", "COGN", "NVTS", 
-        "MKFG", "VLD", "NNDM", "MTLS", "XONE", "VJET", "PRLB", "KODK", "EMR", "ITW", 
-        "SYM", "VRT", "ANET", "ETN", "PH"
-    ],
-    "🎮 Gaming & Metaverse": [
-        "U", "RBLX", "DKNG", "PENN", "FUBO", "SKLZ", "GNUS", "AMC", "GME", "TTWO", 
-        "EA", "ATVI", "CRSR", "LOGI", "HEAR", "SONO", "GPRO", "APPS", "VZIO", "NFLX", 
-        "DIS", "PARAA", "MSGM", "APP"
-    ],
-    "💻 Semiconductors": [
-        "AMD", "NVDA", "INTC", "MU", "AVGO", "MRVL", "QCOM", "TXN", "ADI", "NXPI",
-        "AMAT", "LRCX", "KLAC", "ASML", "TSM", "ON", "SWKS", "MPWR", "ARM",
-        "WDC", "STX", "PSTG", "SMCI", "MCHP", "WOLF", "SLAB", "SYNA", "LSCC", 
-        "ALTR", "INDI", "GFS", "ACLS", "COHR"
-    ],
-    "📱 SaaS & Cloud (High Growth)": [
-        "CRM", "ORCL", "ADBE", "NOW", "WDAY", "TEAM", "ZM", "DOCU", "SNOW", "DDOG",
-        "MDB", "ESTC", "CFLT", "GTLB", "PCOR", "DOCN", "FROG", "APPN", "HUBS", "MSFT",
-        "GOOGL", "META", "AMZN", "AAPL", "DUOL", "MNDY", "GLBE", "IOT", "ASAN", 
-        "SMARTS", "FRSH", "DBX", "BOX", "BAND", "FIVN", "CRM", "INTU"
-    ],
-    "🏥 HealthTech & Devices": [
-        "TDOC", "DOCS", "HIMS", "ONEM", "ACCD", "PHG", "GH", "TMDX", "NTRA", "NVCR",
-        "NVST", "TNDM", "DXCM", "PODD", "ISRG", "ABMD", "SYK", "BSX", "JNJ", "PFE", 
-        "UNH", "SKIN", "ALC", "APP", "SWAV", "INMD"
-    ],
-    "🏠 REITs & PropTech": [
-        "NLY", "AGNC", "IVR", "MFA", "TWO", "ARR", "CIM", "EFC", "NYMT", "RITM", 
-        "ABR", "STWD", "BXMT", "MITT", "DX", "PMT", "EARN", "O", "SPG", "AMT", 
-        "OPEN", "RDFN", "Z", "EXPI", "COMP", "HOUS", "MTTR", "VICI"
-    ],
-    "🛒 Consumer, Retail & E-com": [
-        "SHOP", "MELI", "SE", "CPNG", "ETSY", "W", "CHWY", "CVNA", "REAL", "APRN",
-        "BBBY", "OSTK", "PRTS", "GRPN", "BMBL", "MTCH", "WMT", "TGT", "COST", 
-        "RVLV", "FIGS", "DASH", "UBER", "LYFT", "CART", "PINS", "LULU", "CROX", 
-        "ONON", "DECK", "ULTA"
-    ],
-    "💎 Hidden Gems (Mid/Small Cap)": [
-        "CELH", "ELF", "VRT", "SMCI", "ANET", "SYM", "WING", "LOAR", "KNSL", "AHR", 
-        "HRMY", "NWTN", "VHAI", "SHLS", "SMR", "LUNR", "RKLB", "TMDX", "MOD", "FIX"
-    ]
-}
+    hr { border-color: #1e293b; }
+    
+    .stDataFrame { background: #111827; }
+    
+    .news-item {
+        background: #111827;
+        border: 1px solid #1e293b;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 0.4rem 0;
+        border-left: 3px solid #3b82f6;
+    }
+    
+    .news-title {
+        color: #60a5fa;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-decoration: none;
+    }
+    
+    .news-meta {
+        color: #4a5568;
+        font-size: 0.75rem;
+        font-family: 'IBM Plex Mono', monospace;
+        margin-top: 0.3rem;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-ALL_TICKERS = list(set([ticker for sector in SECTORS.values() for ticker in sector]))
-total_count = len(ALL_TICKERS)
 
-st.info(f"📡 סורק {total_count} מניות (רשימה מורחבת Pro) בסינון רב-שלבי חכם...")
+def render_header():
+    st.markdown('<div class="main-header">📈 MURPHY STOCK SCANNER</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Technical Screener · Oversold Opportunities · Murphy Method</div>', unsafe_allow_html=True)
 
-# --- פונקציות עזר (לוגיקה ללא שינוי) ---
-@st.cache_data(ttl=300)
-def get_data(ticker):
+
+def render_sidebar():
+    with st.sidebar:
+        st.markdown("### ⚙️ Scan Parameters")
+        st.markdown("---")
+        
+        min_price = st.slider("Min Price ($)", 15, 100, 15)
+        min_volume = st.number_input("Min Avg Volume (M)", min_value=0.1, max_value=10.0, value=0.5, step=0.1)
+        min_beta = st.slider("Min Beta", 0.5, 3.0, 1.0, 0.1)
+        
+        st.markdown("---")
+        st.markdown("**RSI Settings**")
+        rsi_max = st.slider("RSI Max (oversold)", 20, 50, 40)
+        rsi_period = st.number_input("RSI Period", min_value=5, max_value=20, value=14)
+        
+        st.markdown("---")
+        st.markdown("**Trend Filters**")
+        require_above_200 = st.checkbox("Above MA200", value=True)
+        require_above_50 = st.checkbox("Above MA50", value=True)
+        require_above_20 = st.checkbox("Above MA20 (optional)", value=False)
+        
+        st.markdown("---")
+        st.markdown("**Bollinger Bands**")
+        bb_period = st.number_input("BB Period", min_value=10, max_value=30, value=20)
+        bb_std = st.slider("BB Std Dev", 1.5, 3.0, 2.0, 0.1)
+        
+        st.markdown("---")
+        max_stocks = st.slider("Max stocks to scan", 50, 500, 200)
+        
+        run_scan = st.button("🔍 RUN SCAN", use_container_width=True)
+        
+        st.markdown("---")
+        st.markdown("**Backtest (1 Year)**")
+        run_bt = st.button("📊 BACKTEST SIGNALS", use_container_width=True)
+        
+        return {
+            "min_price": min_price,
+            "min_volume": min_volume * 1_000_000,
+            "min_beta": min_beta,
+            "rsi_max": rsi_max,
+            "rsi_period": int(rsi_period),
+            "require_above_200": require_above_200,
+            "require_above_50": require_above_50,
+            "require_above_20": require_above_20,
+            "bb_period": int(bb_period),
+            "bb_std": bb_std,
+            "max_stocks": max_stocks,
+            "run_scan": run_scan,
+            "run_backtest": run_bt
+        }
+
+
+def render_stock_card(stock):
+    score = stock.get('score', 0)
+    signal_class = "signal-strong" if score >= 7 else "signal-medium" if score >= 5 else "signal-weak"
+    
+    rsi = stock.get('rsi', 0)
+    price = stock.get('price', 0)
+    ma50 = stock.get('ma50', 0)
+    ma200 = stock.get('ma200', 0)
+    bb_pct = stock.get('bb_pct', 0.5)
+    trend_4w = stock.get('trend_4w', 0)
+    beta = stock.get('beta', 0)
+    volume_ratio = stock.get('volume_ratio', 1)
+    
+    badges = []
+    if stock.get('above_200'): badges.append('<span class="badge badge-green">MA200 ✓</span>')
+    if stock.get('above_50'): badges.append('<span class="badge badge-green">MA50 ✓</span>')
+    if stock.get('above_20'): badges.append('<span class="badge badge-blue">MA20 ✓</span>')
+    if rsi < 30: badges.append('<span class="badge badge-red">RSI EXTREME</span>')
+    elif rsi < 40: badges.append('<span class="badge badge-yellow">RSI OVERSOLD</span>')
+    if bb_pct < 0.2: badges.append('<span class="badge badge-green">BB LOWER ✓</span>')
+    if trend_4w > 0: badges.append('<span class="badge badge-green">4W UPTREND</span>')
+    
+    html = f"""
+    <div class="stock-card">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div>
+                <div class="ticker-symbol">{stock['ticker']}</div>
+                <div style="color:#6b7280; font-size:0.8rem; margin-top:0.2rem;">{stock.get('name','')}</div>
+            </div>
+            <div style="text-align:right;">
+                <div class="price-display">${price:.2f}</div>
+                <div class="{signal_class}" style="font-size:0.85rem;">Score: {score}/10</div>
+            </div>
+        </div>
+        <div style="margin: 0.8rem 0;">
+            {''.join(badges)}
+        </div>
+        <div style="display:grid; grid-template-columns: repeat(4,1fr); gap:0.5rem; margin-top:0.8rem;">
+            <div>
+                <div class="scan-label">RSI(14)</div>
+                <div style="font-family:'IBM Plex Mono',monospace; color:{'#ef4444' if rsi<30 else '#f59e0b' if rsi<40 else '#e0e6f0'}; font-size:1rem; font-weight:600;">{rsi:.1f}</div>
+            </div>
+            <div>
+                <div class="scan-label">Beta</div>
+                <div style="font-family:'IBM Plex Mono',monospace; color:#00d4aa; font-size:1rem; font-weight:600;">{beta:.2f}</div>
+            </div>
+            <div>
+                <div class="scan-label">BB%</div>
+                <div style="font-family:'IBM Plex Mono',monospace; color:{'#00d4aa' if bb_pct<0.2 else '#e0e6f0'}; font-size:1rem; font-weight:600;">{bb_pct:.2f}</div>
+            </div>
+            <div>
+                <div class="scan-label">4W Trend</div>
+                <div style="font-family:'IBM Plex Mono',monospace; color:{'#00d4aa' if trend_4w>0 else '#ef4444'}; font-size:1rem; font-weight:600;">{'▲' if trend_4w>0 else '▼'} {abs(trend_4w):.1f}%</div>
+            </div>
+        </div>
+    </div>
+    """
+    st.markdown(html, unsafe_allow_html=True)
+
+
+def render_chart(ticker, params):
     try:
-        stock = yf.Ticker(ticker)
-        df = stock.history(period="1y")
-        info = stock.info
-        return df, info
-    except:
-        return pd.DataFrame(), {}
-
-def calculate_technical_score(df, info):
-    """חישוב ניקוד טכני 0-100"""
-    score = 0
-    signals = []
-    
-    if len(df) < 50:
-        return 0, []
-    
-    try:
+        df = yf.download(ticker, period="6mo", interval="1d", progress=False)
+        if df.empty or len(df) < 50:
+            return
+        
+        df = df.copy()
+        df['MA20'] = df['Close'].rolling(20).mean()
+        df['MA50'] = df['Close'].rolling(50).mean()
+        df['MA200'] = df['Close'].rolling(200).mean()
+        
+        # Bollinger Bands
+        bb_period = params['bb_period']
+        df['BB_mid'] = df['Close'].rolling(bb_period).mean()
+        df['BB_std'] = df['Close'].rolling(bb_period).std()
+        df['BB_upper'] = df['BB_mid'] + params['bb_std'] * df['BB_std']
+        df['BB_lower'] = df['BB_mid'] - params['bb_std'] * df['BB_std']
+        
         # RSI
+        rsi_p = params['rsi_period']
         delta = df['Close'].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+        gain = delta.clip(lower=0).rolling(rsi_p).mean()
+        loss = (-delta.clip(upper=0)).rolling(rsi_p).mean()
         rs = gain / loss
-        rsi = 100 - (100 / (1 + rs)).iloc[-1]
+        df['RSI'] = 100 - (100 / (1 + rs))
         
-        # Moving Averages
-        df['SMA_50'] = df['Close'].rolling(50).mean()
-        df['SMA_200'] = df['Close'].rolling(200).mean()
+        fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
+                           row_heights=[0.7, 0.3],
+                           vertical_spacing=0.05)
         
-        current_price = df['Close'].iloc[-1]
-        sma_50 = df['SMA_50'].iloc[-1]
-        sma_200 = df['SMA_200'].iloc[-1]
+        # Candlestick
+        fig.add_trace(go.Candlestick(
+            x=df.index, open=df['Open'], high=df['High'],
+            low=df['Low'], close=df['Close'], name=ticker,
+            increasing_line_color='#00d4aa', decreasing_line_color='#ef4444'
+        ), row=1, col=1)
         
-        # Volume Analysis
-        avg_volume = df['Volume'].rolling(20).mean().iloc[-1]
-        current_volume = df['Volume'].iloc[-1]
-        volume_ratio = current_volume / avg_volume if avg_volume > 0 else 0
+        # MAs
+        for ma, color, width in [('MA20','#f59e0b',1), ('MA50','#60a5fa',1.5), ('MA200','#a78bfa',1.5)]:
+            if ma in df.columns:
+                fig.add_trace(go.Scatter(x=df.index, y=df[ma], name=ma,
+                    line=dict(color=color, width=width), opacity=0.8), row=1, col=1)
         
-        # SFP Pattern
-        prev_low_20 = df['Low'].shift(1).rolling(20).min().iloc[-1]
-        today = df.iloc[-1]
-        sfp_signal = (today['Low'] < prev_low_20) and (today['Close'] > prev_low_20)
+        # BB
+        fig.add_trace(go.Scatter(x=df.index, y=df['BB_upper'], name='BB Upper',
+            line=dict(color='#4a5568', width=1, dash='dot'), opacity=0.7), row=1, col=1)
+        fig.add_trace(go.Scatter(x=df.index, y=df['BB_lower'], name='BB Lower',
+            line=dict(color='#4a5568', width=1, dash='dot'),
+            fill='tonexty', fillcolor='rgba(74,85,104,0.1)', opacity=0.7), row=1, col=1)
         
-        # 52-week high/low
-        high_52w = df['High'].rolling(252).max().iloc[-1]
-        low_52w = df['Low'].rolling(252).min().iloc[-1]
-        price_position = (current_price - low_52w) / (high_52w - low_52w) if high_52w > low_52w else 0
+        # RSI
+        fig.add_trace(go.Scatter(x=df.index, y=df['RSI'], name='RSI',
+            line=dict(color='#f59e0b', width=1.5)), row=2, col=1)
+        fig.add_hline(y=40, line_dash="dot", line_color="#00d4aa", opacity=0.5, row=2, col=1)
+        fig.add_hline(y=30, line_dash="dot", line_color="#ef4444", opacity=0.5, row=2, col=1)
         
-        # ניקוד
-        # 1. SFP Pattern (25 נקודות)
-        if sfp_signal and rsi > 30:
-            score += 25
-            signals.append("🔥 SFP Trap")
-        
-        # 2. Dip Buy (25 נקודות)
-        if rsi < 35 and current_price > sma_200 * 1.02:
-            score += 25
-            signals.append("📉 Strong Dip")
-        
-        # 3. Breakout (20 נקודות)
-        if price_position > 0.95 and volume_ratio > 1.5:
-            score += 20
-            signals.append("🚀 Breakout")
-        
-        # 4. Golden Cross (15 נקודות)
-        if sma_50 > sma_200 and current_price > sma_50:
-            score += 15
-            signals.append("✨ Golden Cross")
-        
-        # 5. Volume Surge (15 נקודות)
-        if volume_ratio > 2.0:
-            score += 15
-            signals.append("📊 Volume x2+")
-        
-        return score, signals
-        
-    except Exception as e:
-        return 0, []
-
-def calculate_fundamental_score(info):
-    """חישוב ניקוד פונדמנטלי 0-100 (סלחני לשדות חסרים)"""
-    score = 0
-    reasons = []
-    
-    try:
-        # Market Cap
-        market_cap = info.get('marketCap', 0)
-        if market_cap > 10_000_000_000:  # >$10B
-            score += 20
-            reasons.append("💎 Large Cap")
-        elif market_cap > 1_000_000_000:  # >$1B
-            score += 15
-            reasons.append("💰 Mid Cap")
-        elif market_cap > 200_000_000:  # >$200M
-            score += 10
-            reasons.append("🏢 Small Cap")
-        else:
-            score += 5
-            reasons.append("💼 Listed")
-        
-        # P/E Ratio
-        pe = info.get('trailingPE', None) or info.get('forwardPE', None)
-        if pe and 5 < pe < 30:
-            score += 20
-            reasons.append(f"📊 P/E: {pe:.1f}")
-        elif pe and 30 < pe < 50:
-            score += 10
-            reasons.append(f"📊 P/E: {pe:.1f}")
-        elif pe is None or pe < 0:
-            revenue_growth = info.get('revenueGrowth', None) or info.get('quarterlyRevenueGrowth', {}).get('raw', None)
-            if revenue_growth and revenue_growth > 0.3:
-                score += 20
-                reasons.append(f"🚀 צמיחה {revenue_growth*100:.0f}%")
-            elif revenue_growth and revenue_growth > 0.15:
-                score += 15
-                reasons.append(f"📈 צמיחה {revenue_growth*100:.0f}%")
-            else:
-                score += 5
-        
-        # Debt to Equity
-        debt_to_equity = info.get('debtToEquity', None)
-        if debt_to_equity is not None:
-            if debt_to_equity < 50:
-                score += 20
-                reasons.append("💪 חוב נמוך")
-            elif debt_to_equity < 150:
-                score += 10
-                reasons.append("⚖️ חוב סביר")
-        else:
-            score += 10
-            reasons.append("📊 נתונים מוגבלים")
-        
-        # Revenue Growth
-        revenue_growth = (
-            info.get('revenueGrowth', None) or 
-            info.get('earningsGrowth', None) or
-            info.get('earningsQuarterlyGrowth', None)
+        fig.update_layout(
+            plot_bgcolor='#111827', paper_bgcolor='#0a0e1a',
+            font=dict(color='#e0e6f0', family='IBM Plex Mono'),
+            xaxis_rangeslider_visible=False,
+            legend=dict(bgcolor='rgba(0,0,0,0)', font=dict(size=10)),
+            height=500,
+            margin=dict(l=10, r=10, t=30, b=10),
+            title=dict(text=f"{ticker} — 6M Chart", font=dict(color='#00d4aa', size=14))
         )
-        if revenue_growth:
-            if revenue_growth > 0.2:
-                score += 20
-                reasons.append(f"🚀 צמיחה {revenue_growth*100:.0f}%")
-            elif revenue_growth > 0:
-                score += 5
+        fig.update_xaxes(gridcolor='#1e293b', showgrid=True)
+        fig.update_yaxes(gridcolor='#1e293b', showgrid=True)
         
-        # Profit Margins
-        profit_margin = info.get('profitMargins', None)
-        if profit_margin and profit_margin > 0.1:
-            score += 10
-            reasons.append(f"💰 רווחיות {profit_margin*100:.0f}%")
-        
-        if score < 20 and market_cap > 0:
-            score = 20
-            if not reasons:
-                reasons.append("✓ עוברת סינון בסיסי")
-        
-        return min(score, 100), reasons
-        
+        st.plotly_chart(fig, use_container_width=True)
     except Exception as e:
-        return 15, ["⚠️ נתונים חלקיים"]
+        st.error(f"Chart error: {e}")
 
-def passes_basic_filters(df, info):
-    """סינון בסיסי"""
-    try:
-        current_price = df['Close'].iloc[-1]
-        if current_price < 1:
-            return False, "מחיר < $1"
-        
-        market_cap = info.get('marketCap', 0)
-        if market_cap > 0 and market_cap < 50_000_000:
-            return False, "שווי < $50M"
-        
-        avg_volume = df['Volume'].rolling(20).mean().iloc[-1]
-        if avg_volume < 100_000:
-            return False, "נפח נמוך מדי"
-        
-        if len(df) < 50:
-            return False, "נתונים לא מספקים"
-        
-        return True, "עבר סינון בסיסי"
-    except:
-        return False, "שגיאה בנתונים"
 
-# --- ממשק משתמש ---
-st.sidebar.header("⚙️ הגדרות סינון")
-min_total_score = st.sidebar.slider("ניקוד מינימלי", 20, 80, 40, 5)
-max_results = st.sidebar.slider("מקסימום תוצאות", 5, 30, 15, 5)
-require_technical_signal = st.sidebar.checkbox("חייב איתות טכני", value=False)
+def render_backtest_results(results):
+    st.markdown("### 📊 Backtest Results — Last 12 Months")
+    
+    if not results:
+        st.warning("No backtest results available.")
+        return
+    
+    total = results.get('total', 0)
+    correct_buy = results.get('correct_buy', 0)
+    correct_sell = results.get('correct_sell', 0)
+    wrong = results.get('wrong', 0)
+    
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.markdown(f'<div class="metric-card"><div class="scan-label">Total Signals</div><div class="scan-stat">{total}</div></div>', unsafe_allow_html=True)
+    with col2:
+        pct = correct_buy/total*100 if total else 0
+        st.markdown(f'<div class="metric-card"><div class="scan-label">Correct Buy</div><div class="scan-stat" style="color:#00d4aa">{correct_buy} ({pct:.0f}%)</div></div>', unsafe_allow_html=True)
+    with col3:
+        pct2 = correct_sell/total*100 if total else 0
+        st.markdown(f'<div class="metric-card"><div class="scan-label">Correct Sell</div><div class="scan-stat" style="color:#00d4aa">{correct_sell} ({pct2:.0f}%)</div></div>', unsafe_allow_html=True)
+    with col4:
+        pct3 = wrong/total*100 if total else 0
+        st.markdown(f'<div class="metric-card"><div class="scan-label">Wrong</div><div class="scan-stat" style="color:#ef4444">{wrong} ({pct3:.0f}%)</div></div>', unsafe_allow_html=True)
+    
+    if results.get('details'):
+        st.markdown("#### Signal Details")
+        df = pd.DataFrame(results['details'])
+        st.dataframe(df, use_container_width=True, hide_index=True)
 
-if st.button("🚀 סרוק והצג רק את הטובות ביותר", type="primary"):
-    results = []
+
+# ─────────────────────────────── MAIN ────────────────────────────────
+def main():
+    render_header()
+    params = render_sidebar()
     
-    status_container = st.container()
-    with status_container:
-        st.write("### 📊 התקדמות הסריקה:")
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-        stats_cols = st.columns(4)
+    if 'scan_results' not in st.session_state:
+        st.session_state.scan_results = []
+    if 'backtest_results' not in st.session_state:
+        st.session_state.backtest_results = None
+    
+    # Run scan
+    if params['run_scan']:
+        universe = STOCK_UNIVERSE[:params['max_stocks']]
         
-        scanned_display = stats_cols[0].empty()
-        passed_basic_display = stats_cols[1].empty()
-        passed_fund_display = stats_cols[2].empty()
-        passed_tech_display = stats_cols[3].empty()
-    
-    scanned = 0
-    passed_basic = 0
-    passed_fundamental = 0
-    passed_technical = 0
-    
-    for i, ticker in enumerate(ALL_TICKERS):
-        if i % 3 == 0:
-            progress = (i + 1) / total_count
-            progress_bar.progress(progress)
-            status_text.text(f"🔍 סורק: {ticker} ({i+1}/{total_count})")
+        with st.spinner(f"🔍 Scanning {len(universe)} stocks..."):
+            progress_bar = st.progress(0)
+            results = []
             
-            scanned_display.metric("🔍 נסרקו", scanned)
-            passed_basic_display.metric("✅ עברו בסיס", passed_basic, 
-                                       delta=f"{passed_basic/max(scanned,1)*100:.0f}%")
-            passed_fund_display.metric("💎 פונדמנטלים", passed_fundamental,
-                                      delta=f"{passed_fundamental/max(passed_basic,1)*100:.0f}%")
-            passed_tech_display.metric("🎯 טכני+דירוג", passed_technical,
-                                      delta=f"{passed_technical/max(passed_fundamental,1)*100:.0f}%")
-        
-        scanned += 1
-        
-        df, info = get_data(ticker)
-        if df.empty or not info:
-            continue
-        
-        passed_basic_filter, reason = passes_basic_filters(df, info)
-        if not passed_basic_filter:
-            continue
-        
-        passed_basic += 1
-        
-        tech_score, tech_signals = calculate_technical_score(df, info)
-        fund_score, fund_reasons = calculate_fundamental_score(info)
-        
-        if fund_score < 10:
-            continue
-        
-        passed_fundamental += 1
-        
-        total_score = (tech_score * 0.5) + (fund_score * 0.3) + (
-            20 if len(tech_signals) > 0 else 0
-        ) * 0.2
-        
-        if total_score < min_total_score:
-            continue
-        
-        if require_technical_signal and len(tech_signals) == 0:
-            continue
-        
-        passed_technical += 1
-        
-        current_price = df['Close'].iloc[-1]
-        
-        high_low = df['High'] - df['Low']
-        high_close = abs(df['High'] - df['Close'].shift())
-        low_close = abs(df['Low'] - df['Close'].shift())
-        ranges = pd.concat([high_low, high_close, low_close], axis=1)
-        atr = ranges.max(axis=1).rolling(14).mean().iloc[-1]
-        stop_loss = current_price - (2 * atr)
-        
-        sector_name = "General"
-        for sec, tickers in SECTORS.items():
-            if ticker in tickers:
-                sector_name = sec
-                break
-        
-        results.append({
-            "Ticker": ticker,
-            "Sector": sector_name,
-            "Score": int(total_score),
-            "Price": f"${current_price:.2f}",
-            "Tech": f"{tech_score}/100",
-            "Fund": f"{fund_score}/100",
-            "Signals": " | ".join(tech_signals) if tech_signals else "-",
-            "Reasons": " | ".join(fund_reasons[:2]) if fund_reasons else "-",
-            "Stop": f"${stop_loss:.2f}",
-            "Market Cap": info.get('marketCap', 0)
-        })
+            def scan_single(ticker):
+                try:
+                    return calculate_indicators(ticker, params)
+                except:
+                    return None
+            
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                futures = {executor.submit(scan_single, t): t for t in universe}
+                completed = 0
+                for future in as_completed(futures):
+                    completed += 1
+                    progress_bar.progress(completed / len(universe))
+                    result = future.result()
+                    if result and result.get('passes_filter', False):
+                        results.append(result)
+            
+            results.sort(key=lambda x: x.get('score', 0), reverse=True)
+            st.session_state.scan_results = results
+            progress_bar.empty()
     
-    progress_bar.empty()
-    status_text.empty()
-    st.write("---")
+    # Run backtest
+    if params['run_backtest']:
+        universe = STOCK_UNIVERSE[:100]
+        with st.spinner("📊 Running backtest on 1 year of data..."):
+            bt_results = run_backtest(universe[:50], params)
+            st.session_state.backtest_results = bt_results
+    
+    # Display
+    results = st.session_state.scan_results
     
     if results:
-        df_results = pd.DataFrame(results)
-        df_results = df_results.sort_values('Score', ascending=False)
-        df_results = df_results.head(max_results)
-        df_display = df_results.drop(columns=['Market Cap'])
-        
-        st.success(f"### 🎯 {len(df_results)} מניות עלית מתוך {total_count} שנסרקו")
-        
+        # Summary stats
+        st.markdown("---")
         col1, col2, col3, col4 = st.columns(4)
-        col1.metric("אחוז הצלחה בסיסי", f"{passed_basic/scanned*100:.1f}%")
-        col2.metric("אחוז הצלחה פונדמנטלי", f"{passed_fundamental/passed_basic*100:.1f}%" if passed_basic > 0 else "0%")
-        col3.metric("אחוז הצלחה טכני", f"{passed_technical/passed_fundamental*100:.1f}%" if passed_fundamental > 0 else "0%")
-        col4.metric("סינון כולל", f"{len(df_results)/scanned*100:.1f}%")
+        with col1:
+            st.markdown(f'<div class="metric-card"><div class="scan-label">Stocks Found</div><div class="scan-stat">{len(results)}</div></div>', unsafe_allow_html=True)
+        with col2:
+            strong = sum(1 for r in results if r.get('score', 0) >= 7)
+            st.markdown(f'<div class="metric-card"><div class="scan-label">Strong Signals</div><div class="scan-stat" style="color:#00d4aa">{strong}</div></div>', unsafe_allow_html=True)
+        with col3:
+            avg_rsi = np.mean([r.get('rsi', 0) for r in results])
+            st.markdown(f'<div class="metric-card"><div class="scan-label">Avg RSI</div><div class="scan-stat" style="color:#f59e0b">{avg_rsi:.1f}</div></div>', unsafe_allow_html=True)
+        with col4:
+            below_bb = sum(1 for r in results if r.get('bb_pct', 1) < 0.2)
+            st.markdown(f'<div class="metric-card"><div class="scan-label">Near BB Lower</div><div class="scan-stat">{below_bb}</div></div>', unsafe_allow_html=True)
         
-        st.dataframe(
-            df_display,
-            use_container_width=True,
-            column_config={
-                "Score": st.column_config.NumberColumn("ניקוד", format="%d ⭐"),
-                "Ticker": st.column_config.TextColumn("טיקר", width="small"),
-                "Price": st.column_config.TextColumn("מחיר", width="small")
-            }
-        )
+        st.markdown("---")
         
-        st.write("### 📋 פירוט מניות מובילות:")
-        for idx, row in df_results.head(5).iterrows():
-            with st.expander(f"🎯 {row['Ticker']} - ניקוד {row['Score']} | {row['Sector']}"):
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.write("**פרטים טכניים:**")
-                    st.write(f"- מחיר נוכחי: {row['Price']}")
-                    st.write(f"- Stop Loss מומלץ: {row['Stop']}")
-                    st.write(f"- איתותים: {row['Signals']}")
-                with col2:
-                    st.write("**פרטים פונדמנטליים:**")
-                    st.write(f"- ניקוד: {row['Fund']}")
-                    st.write(f"- סיבות: {row['Reasons']}")
+        # Filter controls
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
+            min_score = st.slider("Min Score Filter", 0, 10, 5)
+        with col_f2:
+            sort_by = st.selectbox("Sort By", ["Score", "RSI (lowest)", "Price"])
         
-        csv = df_display.to_csv(index=False).encode('utf-8-sig')
-        st.download_button(
-            label="📥 ייצא ל-CSV",
-            data=csv,
-            file_name=f"elite_stocks_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
-            mime="text/csv"
-        )
-    else:
-        st.warning(f"❌ לא נמצאו מניות שעומדות בתנאים (ניקוד > {min_total_score})")
+        filtered = [r for r in results if r.get('score', 0) >= min_score]
+        
+        if sort_by == "RSI (lowest)":
+            filtered.sort(key=lambda x: x.get('rsi', 100))
+        elif sort_by == "Price":
+            filtered.sort(key=lambda x: x.get('price', 0), reverse=True)
+        
+        st.markdown(f"### 🎯 {len(filtered)} Opportunities Found")
+        
+        tabs = st.tabs(["📋 List View", "📈 Charts", "📰 News"])
+        
+        with tabs[0]:
+            for stock in filtered:
+                render_stock_card(stock)
+        
+        with tabs[1]:
+            if filtered:
+                selected = st.selectbox("Select stock for chart", [r['ticker'] for r in filtered[:20]])
+                if selected:
+                    render_chart(selected, params)
+        
+        with tabs[2]:
+            if filtered:
+                selected_news = st.selectbox("Select stock for news", [r['ticker'] for r in filtered[:20]], key="news_select")
+                if selected_news:
+                    with st.spinner("Fetching news..."):
+                        news = fetch_news(selected_news)
+                    if news:
+                        for item in news:
+                            st.markdown(f"""
+                            <div class="news-item">
+                                <a href="{item.get('url','#')}" target="_blank" class="news-title">{item.get('title','')}</a>
+                                <div class="news-meta">{item.get('publisher','')} · {item.get('published','')}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    else:
+                        st.info("No news found for this ticker.")
+    
+    elif not params['run_scan']:
+        st.markdown("""
+        <div style="text-align:center; padding: 5rem 2rem; color: #4a5568;">
+            <div style="font-size:4rem; margin-bottom:1rem;">📡</div>
+            <div style="font-family:'IBM Plex Mono',monospace; font-size:1.2rem; color:#6b7280;">
+                Configure parameters and press RUN SCAN
+            </div>
+            <div style="font-size:0.85rem; margin-top:0.5rem;">
+                Murphy Method · RSI Oversold · Trend Following
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Backtest results
+    if st.session_state.backtest_results:
+        st.markdown("---")
+        render_backtest_results(st.session_state.backtest_results)
 
-with st.expander("📊 סטטיסטיקות רשימת המניות"):
-    sector_counts = {sector: len(tickers) for sector, tickers in SECTORS.items()}
-    st.bar_chart(sector_counts)
-    st.write(f"**סה\"כ מניות ייחודיות:** {total_count}")
+
+if __name__ == "__main__":
+    main()
