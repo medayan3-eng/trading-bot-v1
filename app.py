@@ -261,7 +261,7 @@ def render_stock_card(stock, bt_summary=None):
 
 # ══════════════════════════════════════════════
 #  CHART
-# ══════════════════════════════════════════════
+# ═════════════════════════════════════════════
 def render_chart(ticker, params):
     try:
         df = yf.download(ticker, period="6mo", interval="1d", progress=False)
