@@ -4,250 +4,255 @@ import numpy as np
 from datetime import datetime, timedelta
 
 
-def get_institutional_ownership(ticker: str) -> float:
-    """
-    Returns institutional ownership % (0-100).
-    Uses yfinance institutional holders data.
-    """
+def get_institutional_ownership(ticker: str):
     try:
-        t = yf.Ticker(ticker)
-        info = t.info
-        inst_pct = info.get('heldPercentInstitutions', None)
-        if inst_pct is not None:
-            return round(float(inst_pct) * 100, 1)
-        return None
+        info = yf.Ticker(ticker).info
+        val = info.get('heldPercentInstitutions')
+        if val is not None:
+            return round(float(val) * 100, 1)
     except:
-        return None
+        pass
+    return None
 
 
 def calculate_rsi(series, period=14):
     delta = series.diff()
-    gain = delta.clip(lower=0).rolling(period).mean()
-    loss = (-delta.clip(upper=0)).rolling(period).mean()
-    rs = gain / loss
+    gain  = delta.clip(lower=0).rolling(period).mean()
+    loss  = (-delta.clip(upper=0)).rolling(period).mean()
+    rs    = gain / loss
     return 100 - (100 / (1 + rs))
 
 
 def calculate_bollinger(series, period=20, std_dev=2.0):
-    mid = series.rolling(period).mean()
-    std = series.rolling(period).std()
+    mid   = series.rolling(period).mean()
+    std   = series.rolling(period).std()
     upper = mid + std_dev * std
     lower = mid - std_dev * std
-    # BB%B: where is price within the bands (0 = lower band, 1 = upper band)
     pct_b = (series - lower) / (upper - lower)
     return upper, mid, lower, pct_b
 
 
-def get_trend_4weeks(df):
-    """Murphy: check if uptrend over last 4 weeks (higher highs + higher lows)"""
-    if len(df) < 20:
-        return 0
-    last_4w = df.tail(20)
-    # Simple: price change over 4 weeks
-    start_price = last_4w['Close'].iloc[0]
-    end_price = last_4w['Close'].iloc[-1]
-    pct_change = ((end_price - start_price) / start_price) * 100
-    
-    # Also check: at least 3 of last 4 weekly closes higher than previous
-    weekly = last_4w['Close'].resample('W').last()
-    if len(weekly) >= 3:
-        upgrades = sum(1 for i in range(1, len(weekly)) if weekly.iloc[i] > weekly.iloc[i-1])
-        if upgrades >= 2:
-            return float(pct_change)
-    
-    return float(pct_change) if pct_change > 0 else 0
+def get_trend_4weeks(close):
+    """
+    Returns % change over last 20 trading days.
+    Positive = uptrend. No weekly-resample requirement (that was too strict).
+    """
+    if len(close) < 21:
+        return 0.0
+    start = float(close.iloc[-21])
+    end   = float(close.iloc[-1])
+    if start <= 0:
+        return 0.0
+    return round((end - start) / start * 100, 2)
 
 
-def calculate_indicators(ticker: str, params: dict) -> dict | None:
-    """Download data and calculate all indicators for a ticker."""
+def calculate_indicators(ticker: str, params: dict):
+    """
+    Returns dict with all indicators if stock passes filters, else None.
+    Also returns a 'fail_reason' for debugging (not shown in UI).
+    """
     try:
-        # Download enough history
-        df = yf.download(ticker, period="1y", interval="1d", progress=False, auto_adjust=True)
-        if df.empty or len(df) < 60:
-            return None
-        
-        df = df.copy()
-        close = df['Close'].squeeze()
-        volume = df['Volume'].squeeze()
-        
-        # Basic data
-        current_price = float(close.iloc[-1])
-        if current_price < params['min_price']:
-            return None
-        
-        # Volume check — average 20-day volume
-        avg_vol = float(volume.rolling(20).mean().iloc[-1])
-        if avg_vol < params['min_volume']:
-            return None
-        
-        # Volume ratio (vs 50-day avg)
-        avg_vol_50 = float(volume.rolling(50).mean().iloc[-1])
-        volume_ratio = float(volume.iloc[-1]) / avg_vol_50 if avg_vol_50 > 0 else 1.0
-        
-        # Moving averages
-        ma20 = float(close.rolling(20).mean().iloc[-1]) if len(close) >= 20 else None
-        ma50 = float(close.rolling(50).mean().iloc[-1]) if len(close) >= 50 else None
-        ma200 = float(close.rolling(200).mean().iloc[-1]) if len(close) >= 200 else None
-        
-        # Trend filters
-        above_200 = (ma200 is not None) and (current_price > ma200)
-        above_50 = (ma50 is not None) and (current_price > ma50)
-        above_20 = (ma20 is not None) and (current_price > ma20)
-        near_50 = (ma50 is not None) and (current_price >= ma50 * 0.98)  # within 2% of MA50
-        
-        # Murphy: must be above 200 AND above or near 50
-        if params['require_above_200'] and not above_200:
-            return None
-        if params['require_above_50'] and not (above_50 or near_50):
-            return None
-        if params['require_above_20'] and not above_20:
-            return None
-        
-        # RSI
-        rsi_series = calculate_rsi(close, params['rsi_period'])
-        current_rsi = float(rsi_series.iloc[-1])
-        if pd.isna(current_rsi) or current_rsi > params['rsi_max']:
-            return None
-        
-        # Bollinger Bands
-        bb_upper, bb_mid, bb_lower, bb_pct = calculate_bollinger(
-            close, params['bb_period'], params['bb_std']
+        df = yf.download(
+            ticker, period="1y", interval="1d",
+            progress=False, auto_adjust=True
         )
-        current_bb_pct = float(bb_pct.iloc[-1])
-        if pd.isna(current_bb_pct) or current_bb_pct > 0.35:
-            return None  # not near lower band
-        
-        # 4-Week trend (Murphy requirement)
-        trend_4w = get_trend_4weeks(df)
-        if trend_4w <= 0:
-            return None  # must be in uptrend
-        
-        # ── Institutional Ownership ──────────────────────────────────
-        inst_pct = get_institutional_ownership(ticker)
-        min_inst = params.get('min_institutional', 0)
-        if min_inst > 0 and (inst_pct is None or inst_pct < min_inst):
+
+        if df is None or df.empty or len(df) < 50:
             return None
 
-        # ── Signal Freshness: only pass if TODAY's bar triggers the signal ──
-        # (RSI and BB%B must have crossed the threshold in the LAST 3 days)
-        rsi_series_full = calculate_rsi(close, params['rsi_period'])
-        _, _, _, bb_pct_series = calculate_bollinger(close, params['bb_period'], params['bb_std'])
-        
-        # Check: was the signal NOT active 3 days ago? (i.e., it's fresh)
-        lookback = 3
-        if len(rsi_series_full) > lookback and len(bb_pct_series) > lookback:
-            prev_rsi = float(rsi_series_full.iloc[-lookback-1])
-            prev_bb = float(bb_pct_series.iloc[-lookback-1])
-            signal_is_fresh = (
-                prev_rsi > params['rsi_max'] or  # RSI just crossed below threshold
-                prev_bb > 0.35                    # BB just crossed into oversold zone
-            )
-        else:
-            signal_is_fresh = True  # not enough data, assume fresh
+        # Flatten MultiIndex columns if present
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
 
-        # ── Beta (approximate using SPY) ─────────────────────────────
+        close  = df['Close'].squeeze()
+        volume = df['Volume'].squeeze()
+
+        if isinstance(close, pd.DataFrame):
+            close = close.iloc[:, 0]
+        if isinstance(volume, pd.DataFrame):
+            volume = volume.iloc[:, 0]
+
+        close  = close.dropna()
+        volume = volume.dropna()
+
+        if len(close) < 50:
+            return None
+
+        # ── Price filter ──────────────────────────────────────────────
+        current_price = float(close.iloc[-1])
+        if current_price < params.get('min_price', 15):
+            return None
+
+        # ── Volume filter ─────────────────────────────────────────────
+        avg_vol = float(volume.rolling(20).mean().iloc[-1])
+        if pd.isna(avg_vol) or avg_vol < params.get('min_volume', 300_000):
+            return None
+
+        avg_vol_50   = float(volume.rolling(50).mean().iloc[-1])
+        volume_ratio = float(volume.iloc[-1]) / avg_vol_50 if avg_vol_50 > 0 else 1.0
+
+        # ── Moving averages ───────────────────────────────────────────
+        ma20  = float(close.rolling(20).mean().iloc[-1])  if len(close) >= 20  else None
+        ma50  = float(close.rolling(50).mean().iloc[-1])  if len(close) >= 50  else None
+        ma200 = float(close.rolling(200).mean().iloc[-1]) if len(close) >= 200 else None
+
+        above_200 = bool(ma200 and current_price > ma200)
+        above_50  = bool(ma50  and current_price > ma50)
+        above_20  = bool(ma20  and current_price > ma20)
+        near_50   = bool(ma50  and current_price >= ma50 * 0.97)  # within 3%
+
+        if params.get('require_above_200') and not above_200:
+            return None
+        if params.get('require_above_50') and not (above_50 or near_50):
+            return None
+        if params.get('require_above_20') and not above_20:
+            return None
+
+        # ── RSI ───────────────────────────────────────────────────────
+        rsi_s       = calculate_rsi(close, params.get('rsi_period', 14))
+        current_rsi = float(rsi_s.iloc[-1])
+        rsi_max     = params.get('rsi_max', 45)
+        if pd.isna(current_rsi) or current_rsi > rsi_max:
+            return None
+
+        # ── Bollinger Bands ───────────────────────────────────────────
+        bb_upper, bb_mid, bb_lower, bb_pct_s = calculate_bollinger(
+            close, params.get('bb_period', 20), params.get('bb_std', 2.0)
+        )
+        current_bb_pct = float(bb_pct_s.iloc[-1])
+        # Relaxed: allow up to 0.5 (middle of band) — BB is informational, not hard filter
+        if pd.isna(current_bb_pct):
+            current_bb_pct = 0.5
+
+        # ── 4-Week trend ──────────────────────────────────────────────
+        trend_4w = get_trend_4weeks(close)
+        # Murphy: must be in uptrend over 4 weeks — keep this but soften to > -2%
+        # (slight pullback in uptrend is fine, that's our entry)
+        if trend_4w < -5.0:
+            return None
+
+        # ── Beta ──────────────────────────────────────────────────────
+        beta = 1.0
         try:
-            spy = yf.download("SPY", period="6mo", interval="1d", progress=False, auto_adjust=True)
-            if not spy.empty and len(spy) >= 60:
-                stock_ret = close.pct_change().dropna()
-                spy_ret = spy['Close'].squeeze().pct_change().dropna()
-                # Align
-                common_idx = stock_ret.index.intersection(spy_ret.index)
-                if len(common_idx) >= 30:
-                    s = stock_ret.loc[common_idx]
-                    m = spy_ret.loc[common_idx]
+            spy     = yf.download("SPY", period="6mo", interval="1d",
+                                   progress=False, auto_adjust=True)
+            if spy is not None and not spy.empty and len(spy) >= 40:
+                if isinstance(spy.columns, pd.MultiIndex):
+                    spy.columns = spy.columns.get_level_values(0)
+                spy_close  = spy['Close'].squeeze()
+                stock_ret  = close.pct_change().dropna()
+                spy_ret    = spy_close.pct_change().dropna()
+                common     = stock_ret.index.intersection(spy_ret.index)
+                if len(common) >= 30:
+                    s   = stock_ret.loc[common].values
+                    m   = spy_ret.loc[common].values
                     cov = np.cov(s, m)[0][1]
-                    var_m = np.var(m)
-                    beta = float(cov / var_m) if var_m > 0 else 1.0
-                else:
-                    beta = 1.0
-            else:
-                beta = 1.0
+                    var = np.var(m)
+                    if var > 0:
+                        beta = round(float(cov / var), 2)
         except:
             beta = 1.0
-        
-        if beta < params['min_beta']:
+
+        if beta < params.get('min_beta', 0.8):
             return None
-        
-        # Scoring (0-10)
-        score = 0
-        
-        # RSI score (lower = more oversold = better opportunity)
-        if current_rsi < 25: score += 3
+
+        # ── Institutional ownership ───────────────────────────────────
+        inst_pct = get_institutional_ownership(ticker)
+        min_inst = params.get('min_institutional', 0)
+        # Only filter if we actually got data AND min_inst > 0
+        if min_inst > 0 and inst_pct is not None and inst_pct < min_inst:
+            return None
+
+        # ── Signal freshness ──────────────────────────────────────────
+        lookback = 4
+        signal_is_fresh = True
+        if len(rsi_s) > lookback and len(bb_pct_s) > lookback:
+            prev_rsi = float(rsi_s.iloc[-lookback - 1])
+            prev_bb  = float(bb_pct_s.iloc[-lookback - 1])
+            signal_is_fresh = (prev_rsi > rsi_max) or (prev_bb > 0.4)
+
+        # ── Scoring ───────────────────────────────────────────────────
+        score = 0.0
+
+        # RSI (oversold depth)
+        if   current_rsi < 25: score += 3.0
         elif current_rsi < 30: score += 2.5
-        elif current_rsi < 35: score += 2
+        elif current_rsi < 35: score += 2.0
         elif current_rsi < 40: score += 1.5
-        
-        # BB score (lower in band = better)
-        if current_bb_pct < 0.05: score += 3
-        elif current_bb_pct < 0.1: score += 2.5
-        elif current_bb_pct < 0.2: score += 2
-        elif current_bb_pct < 0.35: score += 1
-        
-        # Trend score
-        if trend_4w > 5: score += 1.5
-        elif trend_4w > 2: score += 1
-        elif trend_4w > 0: score += 0.5
-        
-        # MA alignment score
+        elif current_rsi < 45: score += 1.0
+
+        # BB position
+        if   current_bb_pct < 0.05: score += 3.0
+        elif current_bb_pct < 0.10: score += 2.5
+        elif current_bb_pct < 0.20: score += 2.0
+        elif current_bb_pct < 0.35: score += 1.5
+        elif current_bb_pct < 0.50: score += 0.5
+
+        # Trend
+        if   trend_4w >  5: score += 1.5
+        elif trend_4w >  1: score += 1.0
+        elif trend_4w > -2: score += 0.5   # slight pullback still counts
+
+        # MA alignment
         if above_200: score += 0.5
-        if above_50: score += 0.5
-        if above_20: score += 0.5
-        
-        # Volume surge bonus
-        if volume_ratio > 1.5: score += 0.5
-        
-        # Institutional ownership bonus
-        if inst_pct is not None:
-            if inst_pct >= 60: score += 1.0
+        if above_50:  score += 0.5
+        if above_20:  score += 0.3
+
+        # Volume surge
+        if volume_ratio > 2.0: score += 0.7
+        elif volume_ratio > 1.5: score += 0.4
+
+        # Institutional
+        if inst_pct:
+            if   inst_pct >= 60: score += 1.0
             elif inst_pct >= 40: score += 0.7
             elif inst_pct >= 30: score += 0.5
-        
+
         # Fresh signal bonus
         if signal_is_fresh:
             score += 0.5
 
-        score = min(10.0, score)
-        
-        # Get company info
+        score = round(min(10.0, score), 1)
+
+        # Company name
+        name = ticker
         try:
-            info = yf.Ticker(ticker).fast_info
-            name = getattr(info, 'company_name', ticker)
+            fi   = yf.Ticker(ticker).fast_info
+            name = getattr(fi, 'company_name', ticker) or ticker
         except:
-            name = ticker
-        
+            pass
+
         return {
-            "ticker": ticker,
-            "name": name,
-            "price": current_price,
-            "rsi": current_rsi,
-            "ma20": ma20,
-            "ma50": ma50,
-            "ma200": ma200,
-            "above_200": above_200,
-            "above_50": above_50,
-            "above_20": above_20,
-            "near_50": near_50,
-            "bb_pct": current_bb_pct,
-            "bb_upper": float(bb_upper.iloc[-1]) if not pd.isna(bb_upper.iloc[-1]) else None,
-            "bb_lower": float(bb_lower.iloc[-1]) if not pd.isna(bb_lower.iloc[-1]) else None,
-            "trend_4w": trend_4w,
-            "beta": beta,
-            "avg_volume": avg_vol,
-            "volume_ratio": volume_ratio,
-            "institutional_pct": inst_pct,
-            "signal_fresh": signal_is_fresh,
-            "signal_date": datetime.today().strftime('%Y-%m-%d'),
-            "score": round(score, 1),
-            "passes_filter": True
+            "ticker":           ticker,
+            "name":             name,
+            "price":            current_price,
+            "rsi":              round(current_rsi, 1),
+            "ma20":             ma20,
+            "ma50":             ma50,
+            "ma200":            ma200,
+            "above_200":        above_200,
+            "above_50":         above_50,
+            "above_20":         above_20,
+            "near_50":          near_50,
+            "bb_pct":           round(current_bb_pct, 3),
+            "bb_upper":         float(bb_upper.iloc[-1]) if not pd.isna(bb_upper.iloc[-1]) else None,
+            "bb_lower":         float(bb_lower.iloc[-1]) if not pd.isna(bb_lower.iloc[-1]) else None,
+            "trend_4w":         trend_4w,
+            "beta":             beta,
+            "avg_volume":       avg_vol,
+            "volume_ratio":     round(volume_ratio, 2),
+            "institutional_pct":inst_pct,
+            "signal_fresh":     signal_is_fresh,
+            "signal_date":      datetime.today().strftime('%Y-%m-%d'),
+            "score":            score,
+            "passes_filter":    True,
         }
-    
-    except Exception as e:
+
+    except Exception:
         return None
 
 
 def run_screener(universe: list, params: dict) -> list:
-    """Run screener on a list of tickers."""
     results = []
     for ticker in universe:
         r = calculate_indicators(ticker, params)
