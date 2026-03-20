@@ -19,7 +19,7 @@ from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
-# ─── indicator helpers ──────────────────────────────────────────────────────
+# ─── indicator helpers ─────────────────────────────────────────────────────
 
 def _rsi(s, period):
     d   = s.diff()
