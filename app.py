@@ -391,39 +391,34 @@ def main():
         pb = st.progress(0)
         st_txt = st.empty()
         results = []
-        total_scanned = 0
-        fail_no_data = 0
-        fail_price = 0
-        fail_vol = 0
-        fail_ma = 0
-        fail_rsi = 0
-        fail_trend = 0
-        fail_other = 0
+        lock_results = []
 
         def scan_one(ticker):
             try:
                 return calculate_indicators(ticker, params)
-            except Exception as e:
+            except Exception:
                 return None
 
         with ThreadPoolExecutor(max_workers=8) as ex:
-            futures = {ex.submit(scan_one, t): t for t in universe}
+            # Submit all, keep ordered futures list
+            future_to_ticker = {ex.submit(scan_one, t): t for t in universe}
             done = 0
-            for fut in as_completed(futures):
+            for fut in as_completed(future_to_ticker):
                 done += 1
                 pb.progress(done / len(universe))
                 st_txt.caption(f"Scanning {done}/{len(universe)}…")
                 r = fut.result()
                 if r and r.get('passes_filter'):
-                    results.append(r)
+                    lock_results.append(r)
 
-        results.sort(key=lambda x: x.get('score', 0), reverse=True)
-        st.session_state.scan_results     = results
+        # Always sort by score descending — stable order regardless of completion order
+        lock_results.sort(key=lambda x: (-x.get('score', 0), x.get('ticker', '')))
+        st.session_state.scan_results     = lock_results
         st.session_state.backtest_results = None
         pb.empty(); st_txt.empty()
-        
-        if len(results) == 0:
-            st.warning(f"⚠️ Scanned {len(universe)} stocks — 0 passed. The filters may be too strict for current market conditions. Try: RSI Max=50, uncheck MA200/MA50, Min Beta=0, Min Institutional=0")
+
+        if len(lock_results) == 0:
+            st.warning(f"⚠️ Scanned {len(universe)} stocks — 0 passed. Try: RSI Max=60, uncheck MA200/MA50, Min Beta=0, Min Institutional=0")
 
     # ── STEP 2: BACKTEST (only scanned stocks) ─────────────
     if params['run_backtest']:
