@@ -19,7 +19,7 @@ from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
-# ─── indicator helpers ─────────────────────────────────────────────────────
+# ─── indicator helpers ──────────────────────────────────────────────────────
 
 def _rsi(s, period):
     d   = s.diff()
@@ -45,14 +45,18 @@ def _backtest_one(ticker: str, params: dict) -> dict:
     """
     try:
         end   = datetime.today()
-        start = end - timedelta(days=400)  # extra buffer for warmup
+        start = end - timedelta(days=400)
 
-        df = yf.download(ticker, start=start, end=end,
-                         interval="1d", progress=False, auto_adjust=True)
-        if df.empty or len(df) < 60:
+        t   = yf.Ticker(ticker)
+        df  = t.history(start=start, end=end, interval="1d",
+                        auto_adjust=True, actions=False)
+        if df is None or df.empty or len(df) < 60:
             return {}
 
-        close  = df['Close'].squeeze()
+        close  = df['Close']
+        if isinstance(close, pd.DataFrame):
+            close = close.iloc[:, 0]
+        close = close.dropna()
         rsi_p  = params.get('rsi_period', 14)
         rsi_th = params.get('rsi_max', 40)
         bb_p   = params.get('bb_period', 20)
