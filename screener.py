@@ -6,25 +6,34 @@ from datetime import datetime, timedelta
 
 def _get_ohlcv(ticker: str, period: str = "1y") -> pd.DataFrame:
     """
-    Download daily OHLCV for a single ticker.
-    Always returns a clean flat DataFrame or empty.
+    Download OHLCV for a single ticker — thread-safe version.
+    Uses download() with a single ticker string (no MultiIndex).
     """
     try:
-        # Use Ticker object directly — avoids MultiIndex entirely
-        t   = yf.Ticker(ticker)
-        raw = t.history(period=period, interval="1d", auto_adjust=True, actions=False)
+        df = yf.download(
+            tickers=ticker,
+            period=period,
+            interval="1d",
+            auto_adjust=True,
+            actions=False,
+            progress=False,
+            threads=False,      # critical: no internal threading
+            group_by="ticker",  # single ticker → flat columns
+        )
 
-        if raw is None or raw.empty:
+        if df is None or df.empty:
             return pd.DataFrame()
 
-        # history() always returns flat columns: Open High Low Close Volume
-        needed = [c for c in ['Open','High','Low','Close','Volume'] if c in raw.columns]
-        if 'Close' not in needed:
+        # With a single ticker and group_by="ticker",
+        # columns may be MultiIndex like (metric, ticker) — flatten
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+
+        # Verify Close column exists
+        if 'Close' not in df.columns:
             return pd.DataFrame()
 
-        df = raw[needed].copy()
-        df = df.dropna(subset=['Close'])
-        return df
+        return df[['Open','High','Low','Close','Volume']].dropna(subset=['Close']).copy()
 
     except Exception:
         return pd.DataFrame()
