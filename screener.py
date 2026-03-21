@@ -6,30 +6,19 @@ from datetime import datetime, timedelta
 
 def _get_ohlcv(ticker: str, period: str = "1y") -> pd.DataFrame:
     """
-    Download daily OHLCV and always return a clean flat DataFrame.
-    Handles yfinance MultiIndex columns correctly.
+    Download daily OHLCV for a single ticker.
+    Always returns a clean flat DataFrame or empty.
     """
     try:
-        raw = yf.download(
-            ticker, period=period, interval="1d",
-            progress=False, auto_adjust=True, actions=False,
-            group_by="column"          # force column grouping
-        )
+        # Use Ticker object directly — avoids MultiIndex entirely
+        t   = yf.Ticker(ticker)
+        raw = t.history(period=period, interval="1d", auto_adjust=True, actions=False)
+
         if raw is None or raw.empty:
             return pd.DataFrame()
 
-        # yfinance ≥ 0.2 returns MultiIndex like ('Close', 'DOCN')
-        # We need to flatten it
-        if isinstance(raw.columns, pd.MultiIndex):
-            # Keep only columns for this ticker
-            try:
-                raw = raw.xs(ticker, axis=1, level=1)
-            except KeyError:
-                # Try dropping the second level directly
-                raw.columns = raw.columns.get_level_values(0)
-
-        # Ensure we have standard columns
-        needed = [c for c in ['Close', 'Open', 'High', 'Low', 'Volume'] if c in raw.columns]
+        # history() always returns flat columns: Open High Low Close Volume
+        needed = [c for c in ['Open','High','Low','Close','Volume'] if c in raw.columns]
         if 'Close' not in needed:
             return pd.DataFrame()
 
