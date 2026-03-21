@@ -110,8 +110,9 @@ def calculate_indicators(ticker: str, params: dict):
         # ── RSI ───────────────────────────────────────────────────────
         rsi_period = params.get('rsi_period', 14)
         rsi_max    = params.get('rsi_max', 50)
+        rsi_min    = params.get('rsi_min', 0)
         current_rsi = _rsi(close, rsi_period)
-        if current_rsi > rsi_max:
+        if current_rsi > rsi_max or current_rsi < rsi_min:
             return None
 
         # ── Bollinger Bands (informational only, no hard filter) ──────
