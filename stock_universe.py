@@ -31,4 +31,6 @@ STOCK_UNIVERSE = [
     "HIMS", "HOOD", "HUT", "INTU", "IONQ", "LNG", "MSTR",
     "NIO", "NRG", "ORCL", "PBR", "PLTR", "PNW", "PTEN",
     "QBTS", "RIVN", "RKLB", "RTX", "SU", "SYM", "TLN", "TTMI", "UMAC",
+    # Israeli defense
+    "ESLT",
 ]
