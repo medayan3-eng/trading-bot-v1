@@ -40,14 +40,21 @@ def _get_ohlcv(ticker: str, period: str = "1y") -> pd.DataFrame:
 
 
 def _rsi(close: pd.Series, period: int = 14) -> float:
-    if len(close) < period + 2:
+    """
+    RSI using Wilder's smoothing method (EWM with alpha=1/period).
+    This matches TradingView, investing.com, and most professional platforms.
+    """
+    if len(close) < period * 2:
         return 50.0
-    delta = close.diff().dropna()
-    gain  = delta.clip(lower=0).rolling(period).mean()
-    loss  = (-delta.clip(upper=0)).rolling(period).mean()
-    rs    = gain / loss
-    rsi   = 100 - (100 / (1 + rs))
-    val   = float(rsi.iloc[-1])
+    delta = close.diff()
+    gain  = delta.clip(lower=0)
+    loss  = (-delta.clip(upper=0))
+    # Wilder's smoothing = EWM with com=period-1
+    avg_gain = gain.ewm(com=period - 1, min_periods=period).mean()
+    avg_loss = loss.ewm(com=period - 1, min_periods=period).mean()
+    rs  = avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + rs))
+    val = float(rsi.iloc[-1])
     return round(val, 1) if not np.isnan(val) else 50.0
 
 
