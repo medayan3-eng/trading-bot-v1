@@ -5,7 +5,7 @@ import yfinance as yf
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -387,38 +387,28 @@ def main():
     # ── STEP 1: SCAN ──────────────────────────────────────
     if params['run_scan']:
         universe = STOCK_UNIVERSE[:params['max_stocks']]
-        st.info(f"🔍 Scanning {len(universe)} stocks with live data...")
+        st.info(f"🔍 Scanning {len(universe)} stocks...")
         pb = st.progress(0)
         st_txt = st.empty()
-        results = []
         lock_results = []
 
-        def scan_one(ticker):
+        for i, ticker in enumerate(universe):
+            pb.progress((i + 1) / len(universe))
+            st_txt.caption(f"Scanning {ticker}… ({i+1}/{len(universe)})")
             try:
-                return calculate_indicators(ticker, params)
-            except Exception:
-                return None
-
-        with ThreadPoolExecutor(max_workers=8) as ex:
-            # Submit all, keep ordered futures list
-            future_to_ticker = {ex.submit(scan_one, t): t for t in universe}
-            done = 0
-            for fut in as_completed(future_to_ticker):
-                done += 1
-                pb.progress(done / len(universe))
-                st_txt.caption(f"Scanning {done}/{len(universe)}…")
-                r = fut.result()
+                r = calculate_indicators(ticker, params)
                 if r and r.get('passes_filter'):
                     lock_results.append(r)
+            except Exception:
+                pass
 
-        # Always sort by score descending — stable order regardless of completion order
         lock_results.sort(key=lambda x: (-x.get('score', 0), x.get('ticker', '')))
         st.session_state.scan_results     = lock_results
         st.session_state.backtest_results = None
         pb.empty(); st_txt.empty()
 
         if len(lock_results) == 0:
-            st.warning(f"⚠️ Scanned {len(universe)} stocks — 0 passed. Try: RSI Max=60, uncheck MA200/MA50, Min Beta=0, Min Institutional=0")
+            st.warning("⚠️ 0 stocks passed. Try: RSI Max=60, uncheck MA200/MA50, Min Beta=0, Min Institutional=0")
 
     # ── STEP 2: BACKTEST (only scanned stocks) ─────────────
     if params['run_backtest']:
