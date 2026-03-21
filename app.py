@@ -12,6 +12,7 @@ warnings.filterwarnings('ignore')
 from screener import calculate_indicators
 from backtester import run_backtest_on_screened
 from news_fetcher import fetch_news
+from news_intelligence import run_news_intelligence
 from stock_universe import STOCK_UNIVERSE
 
 st.set_page_config(
@@ -366,6 +367,116 @@ def render_backtest_panel(bt_data):
 
 
 # ══════════════════════════════════════════════
+#  NEWS INTELLIGENCE PANEL
+# ══════════════════════════════════════════════
+def render_news_intelligence():
+    st.markdown("### 🧠 AI News Intelligence")
+    st.caption("Claude reads today's market headlines and identifies opportunities & risks")
+
+    if st.button("🔍 Analyze Today's News", use_container_width=True, key="ni_btn"):
+        with st.spinner("Fetching headlines and running AI analysis..."):
+            result = run_news_intelligence()
+            st.session_state['news_intel'] = result
+
+    result = st.session_state.get('news_intel')
+    if not result:
+        st.info("Press the button above to analyze today's market news.")
+        return
+
+    if result.get('error'):
+        st.error(result['error'])
+        return
+
+    # Summary
+    ts = result.get('timestamp', '')
+    st.markdown(f"**🕐 Last updated: {ts}**")
+    summary = result.get('summary', '')
+    if summary:
+        st.markdown(f"""
+        <div style="background:#111827;border:1px solid #1e293b;border-left:4px solid #00d4aa;
+                    border-radius:8px;padding:1rem 1.2rem;margin:0.8rem 0;">
+            <div style="font-size:0.75rem;color:#4a5568;text-transform:uppercase;letter-spacing:1px;margin-bottom:0.4rem;">
+                📰 Market Summary
+            </div>
+            <div style="color:#e0e6f0;font-size:0.92rem;line-height:1.6;">{summary}</div>
+        </div>""", unsafe_allow_html=True)
+
+    # Key themes
+    themes = result.get('key_themes', [])
+    if themes:
+        theme_html = " ".join(
+            f'<span style="background:rgba(59,130,246,0.15);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);'
+            f'border-radius:4px;padding:0.2rem 0.6rem;font-size:0.75rem;font-family:IBM Plex Mono,monospace;'
+            f'margin:0.1rem;display:inline-block;">{t}</span>'
+            for t in themes
+        )
+        st.markdown(f'<div style="margin:0.5rem 0;">{theme_html}</div>', unsafe_allow_html=True)
+
+    col1, col2 = st.columns(2)
+
+    # WATCH stocks
+    with col1:
+        st.markdown("#### 🟢 Stocks to WATCH")
+        watch = result.get('watch', [])
+        if not watch:
+            st.info("No strong buy signals from news.")
+        for item in watch:
+            conf   = item.get('confidence', 'LOW')
+            conf_c = "#00d4aa" if conf == "HIGH" else "#f59e0b" if conf == "MEDIUM" else "#6b7280"
+            st.markdown(f"""
+            <div style="background:#111827;border:1px solid #1e293b;border-left:3px solid #00d4aa;
+                        border-radius:8px;padding:0.8rem 1rem;margin:0.35rem 0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:1.1rem;font-weight:700;color:#00d4aa;">
+                        {item.get('ticker','')}
+                    </span>
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;
+                                 color:{conf_c};border:1px solid {conf_c};border-radius:4px;padding:0.1rem 0.4rem;">
+                        {conf}
+                    </span>
+                </div>
+                <div style="color:#9ca3af;font-size:0.8rem;margin-top:0.3rem;">{item.get('theme','')}</div>
+                <div style="color:#e0e6f0;font-size:0.82rem;margin-top:0.3rem;">{item.get('reason','')}</div>
+            </div>""", unsafe_allow_html=True)
+
+    # AVOID stocks
+    with col2:
+        st.markdown("#### 🔴 Stocks to AVOID")
+        avoid = result.get('avoid', [])
+        if not avoid:
+            st.info("No strong sell signals from news.")
+        for item in avoid:
+            conf   = item.get('confidence', 'LOW')
+            conf_c = "#ef4444" if conf == "HIGH" else "#f59e0b" if conf == "MEDIUM" else "#6b7280"
+            st.markdown(f"""
+            <div style="background:#111827;border:1px solid #1e293b;border-left:3px solid #ef4444;
+                        border-radius:8px;padding:0.8rem 1rem;margin:0.35rem 0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:1.1rem;font-weight:700;color:#ef4444;">
+                        {item.get('ticker','')}
+                    </span>
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;
+                                 color:{conf_c};border:1px solid {conf_c};border-radius:4px;padding:0.1rem 0.4rem;">
+                        {conf}
+                    </span>
+                </div>
+                <div style="color:#9ca3af;font-size:0.8rem;margin-top:0.3rem;">{item.get('theme','')}</div>
+                <div style="color:#e0e6f0;font-size:0.82rem;margin-top:0.3rem;">{item.get('reason','')}</div>
+            </div>""", unsafe_allow_html=True)
+
+    # Raw headlines
+    with st.expander("📋 Raw Headlines Used"):
+        for h in result.get('headlines', [])[:20]:
+            st.markdown(
+                f'<div style="padding:0.3rem 0;border-bottom:1px solid #1e293b;">'
+                f'<span style="color:#4a5568;font-size:0.72rem;font-family:IBM Plex Mono,monospace;">'
+                f'{h.get("published","")}</span> '
+                f'<a href="{h.get("url","#")}" target="_blank" style="color:#60a5fa;font-size:0.82rem;">'
+                f'{h.get("title","")}</a></div>',
+                unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════
 #  MAIN
 # ══════════════════════════════════════════════
 def main():
@@ -462,7 +573,7 @@ def main():
 
             st.markdown(f"### 🎯 {len(filtered)} Opportunities")
 
-            t1, t2, t3, t4 = st.tabs(["📋 Stocks", "📈 Charts", "📰 News", "📊 Backtest"])
+            t1, t2, t3, t4, t5 = st.tabs(["📋 Stocks", "📈 Charts", "📰 News", "🧠 AI News Intel", "📊 Backtest"])
 
             with t1:
                 for stock in filtered:
@@ -489,6 +600,9 @@ def main():
                         if not news: st.info("No news found.")
 
             with t4:
+                render_news_intelligence()
+
+            with t5:
                 if bt_data:
                     render_backtest_panel(bt_data)
                 else:
