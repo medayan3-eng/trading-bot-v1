@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 import warnings
 warnings.filterwarnings('ignore')
 
-from screener import calculate_indicators
+from screener import calculate_indicators, debug_ticker
 from backtester import run_backtest_on_screened
 from news_fetcher import fetch_news
 from news_intelligence import run_news_intelligence
@@ -167,6 +167,9 @@ def render_sidebar():
         st.markdown("")
         run_bt = st.button("📊 STEP 2 — BACKTEST", use_container_width=True)
         st.caption("Tests only stocks from Step 1 — 1 year, many trades")
+        st.markdown("")
+        debug_ticker_input = st.text_input("🔧 Debug ticker (e.g. COIN)", value="").upper().strip()
+        run_debug = st.button("🔧 Debug single stock", use_container_width=True)
 
         return dict(
             min_price=min_price, min_volume=min_volume*1_000_000,
@@ -175,6 +178,7 @@ def render_sidebar():
             bb_period=int(bb_period), bb_std=bb_std,
             min_institutional=min_inst, show_fresh_only=fresh_only,
             max_stocks=max_stocks, run_scan=run_scan, run_backtest=run_bt,
+            run_debug=run_debug, debug_ticker=debug_ticker_input,
         )
 
 
@@ -495,6 +499,13 @@ def main():
         if k not in st.session_state:
             st.session_state[k] = None
 
+    # ── DEBUG single ticker ────────────────────────────────
+    if params.get('run_debug') and params.get('debug_ticker'):
+        t = params['debug_ticker']
+        with st.spinner(f"Debugging {t}..."):
+            msg = debug_ticker(t, params)
+        st.info(msg)
+
     # ── STEP 1: SCAN ──────────────────────────────────────
     if params['run_scan']:
         universe = STOCK_UNIVERSE[:params['max_stocks']]
@@ -505,7 +516,7 @@ def main():
 
         for i, ticker in enumerate(universe):
             pb.progress((i + 1) / len(universe))
-            st_txt.caption(f"Scanning {ticker}… ({i+1}/{len(universe)})")
+            st_txt.caption(f"Scanning {ticker}… ({i+1}/{len(universe)}) — found: {len(lock_results)}")
             try:
                 r = calculate_indicators(ticker, params)
                 if r and r.get('passes_filter'):
