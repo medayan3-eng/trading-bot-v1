@@ -6,34 +6,23 @@ from datetime import datetime, timedelta
 
 def _get_ohlcv(ticker: str, period: str = "1y") -> pd.DataFrame:
     """
-    Download OHLCV for a single ticker — thread-safe version.
-    Uses download() with a single ticker string (no MultiIndex).
+    Download OHLCV using Ticker.history() — never returns MultiIndex.
+    Most reliable method across all yfinance versions.
     """
     try:
-        df = yf.download(
-            tickers=ticker,
-            period=period,
-            interval="1d",
-            auto_adjust=True,
-            actions=False,
-            progress=False,
-            threads=False,      # critical: no internal threading
-            group_by="ticker",  # single ticker → flat columns
-        )
+        t  = yf.Ticker(ticker)
+        df = t.history(period=period, interval="1d",
+                       auto_adjust=True, actions=False)
 
         if df is None or df.empty:
             return pd.DataFrame()
 
-        # With a single ticker and group_by="ticker",
-        # columns may be MultiIndex like (metric, ticker) — flatten
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
-
-        # Verify Close column exists
+        # history() always returns flat columns
         if 'Close' not in df.columns:
             return pd.DataFrame()
 
-        return df[['Open','High','Low','Close','Volume']].dropna(subset=['Close']).copy()
+        cols = [c for c in ['Open','High','Low','Close','Volume'] if c in df.columns]
+        return df[cols].dropna(subset=['Close']).copy()
 
     except Exception:
         return pd.DataFrame()
@@ -105,7 +94,54 @@ def _beta(close: pd.Series) -> float:
         return 1.0
 
 
-def calculate_indicators(ticker: str, params: dict):
+def debug_ticker(ticker: str, params: dict) -> str:
+    """Returns a string explaining exactly why a ticker passed or failed."""
+    try:
+        df = _get_ohlcv(ticker, period="1y")
+        if df.empty or len(df) < 50:
+            return f"{ticker}: ❌ No data (got {len(df)} rows)"
+
+        close  = df['Close']
+        volume = df['Volume'] if 'Volume' in df.columns else pd.Series(dtype=float)
+        price  = round(float(close.iloc[-1]), 2)
+
+        msgs = [f"**{ticker}** — Price: ${price}"]
+
+        if price < params.get('min_price', 15):
+            return f"{ticker}: ❌ Price ${price} < min ${params.get('min_price')}"
+
+        avg_vol = float(volume.rolling(20).mean().iloc[-1]) if not volume.empty else 0
+        if avg_vol < params.get('min_volume', 200_000):
+            return f"{ticker}: ❌ Volume {avg_vol:,.0f} < min {params.get('min_volume'):,.0f}"
+
+        ma50  = float(close.rolling(50).mean().iloc[-1])  if len(close) >= 50  else None
+        ma200 = float(close.rolling(200).mean().iloc[-1]) if len(close) >= 200 else None
+
+        if params.get('require_above_200') and (ma200 is None or price < ma200):
+            return f"{ticker}: ❌ Below MA200 (price={price}, ma200={ma200})"
+        if params.get('require_above_50') and (ma50 is None or price < ma50 * 0.97):
+            return f"{ticker}: ❌ Below MA50 (price={price}, ma50={ma50})"
+
+        rsi = _rsi(close, params.get('rsi_period', 14))
+        rsi_min = params.get('rsi_min', 0)
+        rsi_max = params.get('rsi_max', 90)
+        if rsi > rsi_max or rsi < rsi_min:
+            return f"{ticker}: ❌ RSI={rsi} not in range [{rsi_min}-{rsi_max}]"
+
+        trend = _trend_pct(close, 20)
+        if trend < -15:
+            return f"{ticker}: ❌ Trend {trend}% < -15%"
+
+        beta = _beta(close)
+        if beta < params.get('min_beta', 0):
+            return f"{ticker}: ❌ Beta {beta} < min {params.get('min_beta')}"
+
+        return f"{ticker}: ✅ PASSES — RSI={rsi}, Price=${price}, Beta={beta}, Trend={trend}%"
+    except Exception as e:
+        return f"{ticker}: ❌ Exception: {str(e)}"
+
+
+
     try:
         df = _get_ohlcv(ticker, period="1y")
         if df.empty or len(df) < 50:
