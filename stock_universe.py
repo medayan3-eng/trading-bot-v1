@@ -1,5 +1,5 @@
 """
-Stock universe — S&P500 + growth + institutional watchlists.
+Stock universe — S&P500 + growth + institutional + extended watchlists.
 All verified active as of March 2026.
 """
 
@@ -57,5 +57,17 @@ STOCK_UNIVERSE = [
     "INFA", "PATH", "AI", "AFRM", "UPST", "SOFI", "LC", "OPEN", "RDFN", "ZG",
     "Z", "EXPI", "COMP", "CBRE", "JLL", "COLD", "STAG", "FR", "EPR", "NNN",
     "ADC", "OHI", "SBRA", "MPW", "VICI", "GLPI", "WYNN", "MGM", "DKNG", "PENN",
-    "FLUT",
+    "FLUT", "ABG", "ACA", "ACIW", "ACLS", "ACVA", "ADMA", "ADUS", "AEIS", "AEO",
+    "AER", "AGYS", "ALIT", "ALKT", "ALRM", "ALSN", "AMBA", "AMED", "AMPH", "AMPL",
+    "AMRC", "AMWD", "ANF", "ANGO", "ANIP", "APAM", "APLE", "APLS", "APP", "ARCB",
+    "ARCO", "ARLO", "AROC", "ARRY", "ASAN", "ASGN", "ASPN", "ASTE", "ATKR", "ATMU",
+    "ATRC", "ATSG", "ATUS", "AVDX", "AVNS", "AVNT", "AVT", "AXSM", "AXTA", "AYX",
+    "AZPN", "AZZ", "BC", "BCC", "BCRX", "BCPC", "BDC", "BHE", "BILL", "BJ",
+    "BL", "BLBD", "BLKB", "BLMN", "BLTE", "BMI", "BMRN", "BRBR", "BRKR", "BSM",
+    "BWA", "BWXT", "BYD", "BYND", "BZ", "CACC", "CADE", "CALX", "CAR", "CARS",
+    "CASH", "CATY", "CBT", "CCOI", "CCS", "CDNA", "CDRE", "CDXS", "CEIX", "CELH",
+    "CENT", "CENTA", "CERT", "CEVA", "CFB", "CHDN", "CHE", "CHH", "CHUY", "CLBT",
+    "CLF", "CLH", "CNO", "CNX", "CNXC", "COLM", "COMM", "COOP", "CORT", "COTY",
+    "COUR", "CR", "CRDO", "CRK", "CRL", "CRSR", "CSGS", "CTRE", "CTVA", "CUBI",
+    "CVBF", "CVCO", "CVLT", "CWAN", "CWEN", "CWH", "CWK", "CXM", "CYTK",
 ]
