@@ -5,45 +5,32 @@ from datetime import datetime, timedelta
 
 
 def _get_ohlcv(ticker: str, period: str = "1y") -> pd.DataFrame:
-    """
-    Download OHLCV using Ticker.history() — never returns MultiIndex.
-    Most reliable method across all yfinance versions.
-    """
     try:
         t  = yf.Ticker(ticker)
         df = t.history(period=period, interval="1d",
                        auto_adjust=True, actions=False)
-
         if df is None or df.empty:
             return pd.DataFrame()
-
-        # history() always returns flat columns
         if 'Close' not in df.columns:
             return pd.DataFrame()
-
         cols = [c for c in ['Open','High','Low','Close','Volume'] if c in df.columns]
         return df[cols].dropna(subset=['Close']).copy()
-
     except Exception:
         return pd.DataFrame()
 
 
 def _rsi(close: pd.Series, period: int = 14) -> float:
-    """
-    RSI using Wilder's smoothing method (EWM with alpha=1/period).
-    This matches TradingView, investing.com, and most professional platforms.
-    """
+    """Wilder's RSI — matches TradingView / investing.com."""
     if len(close) < period * 2:
         return 50.0
-    delta = close.diff()
-    gain  = delta.clip(lower=0)
-    loss  = (-delta.clip(upper=0))
-    # Wilder's smoothing = EWM with com=period-1
+    delta    = close.diff()
+    gain     = delta.clip(lower=0)
+    loss     = (-delta.clip(upper=0))
     avg_gain = gain.ewm(com=period - 1, min_periods=period).mean()
     avg_loss = loss.ewm(com=period - 1, min_periods=period).mean()
-    rs  = avg_gain / avg_loss
-    rsi = 100 - (100 / (1 + rs))
-    val = float(rsi.iloc[-1])
+    rs       = avg_gain / avg_loss
+    rsi      = 100 - (100 / (1 + rs))
+    val      = float(rsi.iloc[-1])
     return round(val, 1) if not np.isnan(val) else 50.0
 
 
@@ -74,19 +61,18 @@ def _trend_pct(close: pd.Series, days: int = 20) -> float:
 
 
 def _beta(close: pd.Series) -> float:
-    """Calculate beta vs SPY."""
     try:
-        spy_df = _get_ohlcv("SPY", period="6mo")
+        spy_df    = _get_ohlcv("SPY", period="6mo")
         if spy_df.empty or len(spy_df) < 40:
             return 1.0
-        spy_close  = spy_df['Close']
-        stock_ret  = close.pct_change().dropna()
-        spy_ret    = spy_close.pct_change().dropna()
-        common     = stock_ret.index.intersection(spy_ret.index)
+        spy_close = spy_df['Close']
+        stock_ret = close.pct_change().dropna()
+        spy_ret   = spy_close.pct_change().dropna()
+        common    = stock_ret.index.intersection(spy_ret.index)
         if len(common) < 30:
             return 1.0
-        s = stock_ret.loc[common].values.astype(float)
-        m = spy_ret.loc[common].values.astype(float)
+        s   = stock_ret.loc[common].values.astype(float)
+        m   = spy_ret.loc[common].values.astype(float)
         cov = np.cov(s, m)[0][1]
         var = np.var(m)
         return round(float(cov / var), 2) if var > 0 else 1.0
@@ -95,17 +81,15 @@ def _beta(close: pd.Series) -> float:
 
 
 def debug_ticker(ticker: str, params: dict) -> str:
-    """Returns a string explaining exactly why a ticker passed or failed."""
+    """Explains exactly why a ticker passed or failed all filters."""
     try:
         df = _get_ohlcv(ticker, period="1y")
         if df.empty or len(df) < 50:
-            return f"{ticker}: ❌ No data (got {len(df)} rows)"
+            return f"{ticker}: ❌ No data ({len(df)} rows)"
 
         close  = df['Close']
         volume = df['Volume'] if 'Volume' in df.columns else pd.Series(dtype=float)
         price  = round(float(close.iloc[-1]), 2)
-
-        msgs = [f"**{ticker}** — Price: ${price}"]
 
         if price < params.get('min_price', 15):
             return f"{ticker}: ❌ Price ${price} < min ${params.get('min_price')}"
@@ -118,30 +102,33 @@ def debug_ticker(ticker: str, params: dict) -> str:
         ma200 = float(close.rolling(200).mean().iloc[-1]) if len(close) >= 200 else None
 
         if params.get('require_above_200') and (ma200 is None or price < ma200):
-            return f"{ticker}: ❌ Below MA200 (price={price}, ma200={ma200})"
+            return f"{ticker}: ❌ Below MA200 (price={price}, ma200={round(ma200,2) if ma200 else 'N/A'})"
         if params.get('require_above_50') and (ma50 is None or price < ma50 * 0.97):
-            return f"{ticker}: ❌ Below MA50 (price={price}, ma50={ma50})"
+            return f"{ticker}: ❌ Below MA50 (price={price}, ma50={round(ma50,2) if ma50 else 'N/A'})"
 
-        rsi = _rsi(close, params.get('rsi_period', 14))
+        rsi     = _rsi(close, params.get('rsi_period', 14))
         rsi_min = params.get('rsi_min', 0)
         rsi_max = params.get('rsi_max', 90)
         if rsi > rsi_max or rsi < rsi_min:
-            return f"{ticker}: ❌ RSI={rsi} not in range [{rsi_min}-{rsi_max}]"
+            return f"{ticker}: ❌ RSI={rsi} not in [{rsi_min}–{rsi_max}]"
 
         trend = _trend_pct(close, 20)
         if trend < -15:
             return f"{ticker}: ❌ Trend {trend}% < -15%"
 
-        beta = _beta(close)
-        if beta < params.get('min_beta', 0):
-            return f"{ticker}: ❌ Beta {beta} < min {params.get('min_beta')}"
+        beta     = _beta(close)
+        min_beta = params.get('min_beta', 0)
+        if min_beta > 0 and beta < min_beta:
+            return f"{ticker}: ❌ Beta {beta} < min {min_beta}"
 
-        return f"{ticker}: ✅ PASSES — RSI={rsi}, Price=${price}, Beta={beta}, Trend={trend}%"
+        return (f"{ticker}: ✅ PASSES — Price=${price}, RSI={rsi}, "
+                f"Beta={beta}, Trend={trend}%, MA200={'✓' if ma200 and price>ma200 else '✗'}, "
+                f"MA50={'✓' if ma50 and price>ma50 else '✗'}")
     except Exception as e:
-        return f"{ticker}: ❌ Exception: {str(e)}"
+        return f"{ticker}: ❌ Exception: {e}"
 
 
-
+def calculate_indicators(ticker: str, params: dict):
     try:
         df = _get_ohlcv(ticker, period="1y")
         if df.empty or len(df) < 50:
@@ -150,14 +137,12 @@ def debug_ticker(ticker: str, params: dict) -> str:
         close  = df['Close']
         volume = df['Volume'] if 'Volume' in df.columns else pd.Series(dtype=float)
 
-        # ── Price ─────────────────────────────────────────────────────
         price = round(float(close.iloc[-1]), 2)
         if price < params.get('min_price', 15):
             return None
 
-        # ── Volume ────────────────────────────────────────────────────
         if not volume.empty:
-            avg_vol = float(volume.rolling(20).mean().iloc[-1])
+            avg_vol    = float(volume.rolling(20).mean().iloc[-1])
             avg_vol_50 = float(volume.rolling(50).mean().iloc[-1])
             if np.isnan(avg_vol) or avg_vol < params.get('min_volume', 200_000):
                 return None
@@ -166,7 +151,6 @@ def debug_ticker(ticker: str, params: dict) -> str:
             avg_vol = 0
             volume_ratio = 1.0
 
-        # ── Moving Averages ───────────────────────────────────────────
         ma20  = round(float(close.rolling(20).mean().iloc[-1]),  2) if len(close) >= 20  else None
         ma50  = round(float(close.rolling(50).mean().iloc[-1]),  2) if len(close) >= 50  else None
         ma200 = round(float(close.rolling(200).mean().iloc[-1]), 2) if len(close) >= 200 else None
@@ -185,31 +169,26 @@ def debug_ticker(ticker: str, params: dict) -> str:
         if params.get('require_above_20') and not above_20:
             return None
 
-        # ── RSI ───────────────────────────────────────────────────────
         rsi_period  = params.get('rsi_period', 14)
-        rsi_max     = params.get('rsi_max', 50)
+        rsi_max     = params.get('rsi_max', 90)
         rsi_min     = params.get('rsi_min', 0)
         current_rsi = _rsi(close, rsi_period)
         if current_rsi > rsi_max or current_rsi < rsi_min:
             return None
 
-        # ── Bollinger Bands ───────────────────────────────────────────
         bb_period = params.get('bb_period', 20)
         bb_std    = params.get('bb_std', 2.0)
         current_bb_pct, bb_upper_v, bb_lower_v = _bb_pct(close, bb_period, bb_std)
 
-        # ── 4-Week Trend ──────────────────────────────────────────────
         trend_4w = _trend_pct(close, 20)
         if trend_4w < -15.0:
             return None
 
-        # ── Beta ──────────────────────────────────────────────────────
         min_beta = params.get('min_beta', 0.5)
-        beta = _beta(close)
+        beta     = _beta(close)
         if min_beta > 0 and beta < min_beta:
             return None
 
-        # ── Institutional % (optional, don't reject if N/A) ──────────
         inst_pct = None
         min_inst = params.get('min_institutional', 0)
         if min_inst > 0:
@@ -221,24 +200,21 @@ def debug_ticker(ticker: str, params: dict) -> str:
                     if inst_pct < min_inst:
                         return None
             except Exception:
-                pass  # don't reject, just no data
+                pass
 
-        # ── Signal Freshness ─────────────────────────────────────────
         signal_is_fresh = True
         try:
-            delta = close.diff().dropna()
-            g = delta.clip(lower=0).rolling(rsi_period).mean()
-            l = (-delta.clip(upper=0)).rolling(rsi_period).mean()
-            rsi_series = 100 - (100 / (1 + g / l))
-            if len(rsi_series) > 5:
-                prev_rsi = float(rsi_series.iloc[-5])
-                signal_is_fresh = (not np.isnan(prev_rsi)) and (prev_rsi > rsi_max)
+            delta    = close.diff()
+            g        = delta.clip(lower=0).ewm(com=rsi_period-1, min_periods=rsi_period).mean()
+            l        = (-delta.clip(upper=0)).ewm(com=rsi_period-1, min_periods=rsi_period).mean()
+            rsi_ser  = 100 - (100 / (1 + g / l))
+            if len(rsi_ser) > 5:
+                prev     = float(rsi_ser.iloc[-5])
+                signal_is_fresh = (not np.isnan(prev)) and (prev > rsi_max)
         except Exception:
             signal_is_fresh = True
 
-        # ── Scoring ───────────────────────────────────────────────────
         score = 0.0
-
         if   current_rsi < 20: score += 4.0
         elif current_rsi < 25: score += 3.0
         elif current_rsi < 30: score += 2.5
@@ -257,15 +233,12 @@ def debug_ticker(ticker: str, params: dict) -> str:
         elif trend_4w >  0: score += 1.0
         elif trend_4w > -5: score += 0.3
 
-        if above_200: score += 0.5
-        if above_50:  score += 0.5
-        if above_20:  score += 0.3
-
+        if above_200:            score += 0.5
+        if above_50:             score += 0.5
+        if above_20:             score += 0.3
         if volume_ratio > 2.0:   score += 0.7
         elif volume_ratio > 1.5: score += 0.4
-
-        if signal_is_fresh: score += 0.5
-
+        if signal_is_fresh:      score += 0.5
         if inst_pct:
             if   inst_pct >= 60: score += 1.0
             elif inst_pct >= 40: score += 0.7
@@ -273,7 +246,6 @@ def debug_ticker(ticker: str, params: dict) -> str:
 
         score = round(min(10.0, score), 1)
 
-        # ── Company name ──────────────────────────────────────────────
         name = ticker
         try:
             fi   = yf.Ticker(ticker).fast_info
