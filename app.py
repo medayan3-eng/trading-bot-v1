@@ -139,8 +139,11 @@ def render_sidebar():
         min_beta   = st.slider("Min Beta", 0.5, 3.0, 1.0, 0.1)
         st.markdown("---")
         st.markdown("**RSI**")
-        rsi_max    = st.slider("RSI Max (oversold)", 20, 50, 40)
+        rsi_range  = st.slider("RSI Range", 10, 90, (10, 50))
+        rsi_min    = rsi_range[0]
+        rsi_max    = rsi_range[1]
         rsi_period = st.number_input("RSI Period", 5, 20, 14)
+        st.caption(f"Stocks with RSI between {rsi_min} – {rsi_max}")
         st.markdown("---")
         st.markdown("**Moving Averages**")
         req200 = st.checkbox("Above MA200", value=True)
@@ -152,10 +155,10 @@ def render_sidebar():
         bb_std    = st.slider("BB Std Dev", 1.5, 3.0, 2.0, 0.1)
         st.markdown("---")
         st.markdown("**Institutional**")
-        min_inst    = st.slider("Min Institutional %", 0, 80, 30)
-        fresh_only  = st.checkbox("🟢 Fresh Signals (≤3 days)", value=True)
+        min_inst    = st.slider("Min Institutional %", 0, 80, 0)
+        fresh_only  = st.checkbox("🟢 Fresh Signals (≤3 days)", value=False)
         st.markdown("---")
-        max_stocks = st.slider("Max stocks to scan", 50, 500, 200)
+        max_stocks = st.slider("Max stocks to scan", 50, 200, 174)
         st.markdown("---")
 
         run_scan = st.button("🔍 STEP 1 — RUN SCAN", use_container_width=True)
@@ -166,7 +169,7 @@ def render_sidebar():
 
         return dict(
             min_price=min_price, min_volume=min_volume*1_000_000,
-            min_beta=min_beta, rsi_max=rsi_max, rsi_period=int(rsi_period),
+            min_beta=min_beta, rsi_min=rsi_min, rsi_max=rsi_max, rsi_period=int(rsi_period),
             require_above_200=req200, require_above_50=req50, require_above_20=req20,
             bb_period=int(bb_period), bb_std=bb_std,
             min_institutional=min_inst, show_fresh_only=fresh_only,
