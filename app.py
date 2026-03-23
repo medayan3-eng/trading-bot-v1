@@ -159,7 +159,7 @@ def render_sidebar():
         min_inst    = st.slider("Min Institutional %", 0, 80, 0)
         fresh_only  = st.checkbox("🟢 Fresh Signals (≤3 days)", value=False)
         st.markdown("---")
-        max_stocks = st.slider("Max stocks to scan", 50, 672, 672)
+        max_stocks = st.slider("Max stocks to scan", 50, 1492, 1492)
         st.markdown("---")
 
         run_scan = st.button("🔍 STEP 1 — RUN SCAN", use_container_width=True)
@@ -191,6 +191,8 @@ def render_stock_card(stock, bt_summary=None):
     bb_pct   = stock.get('bb_pct', 0.5)
     trend_4w = stock.get('trend_4w', 0)
     beta     = stock.get('beta', 0)
+    macd_hist    = stock.get('macd_hist', 0)
+    macd_bullish = stock.get('macd_bullish', False)
     inst_pct = stock.get('institutional_pct')
     fresh    = stock.get('signal_fresh', False)
     sig_date = stock.get('signal_date', '')
@@ -205,6 +207,8 @@ def render_stock_card(stock, bt_summary=None):
     elif rsi < 40:              badges.append('<span class="badge badge-yellow">RSI OVERSOLD</span>')
     if bb_pct < 0.2:            badges.append('<span class="badge badge-green">BB LOWER ✓</span>')
     if trend_4w > 0:            badges.append('<span class="badge badge-green">4W UPTREND</span>')
+    if macd_bullish:            badges.append('<span class="badge badge-green">MACD ✓</span>')
+    else:                       badges.append('<span class="badge badge-red">MACD ✗</span>')
     if inst_pct and inst_pct >= 30:
         badges.append(f'<span class="badge badge-blue">🏦 {inst_pct:.0f}% INST</span>')
     badges.append('<span class="badge badge-green">🟢 FRESH</span>' if fresh else
@@ -242,7 +246,7 @@ def render_stock_card(stock, bt_summary=None):
         </div>
       </div>
       <div style="margin:0.6rem 0;">{''.join(badges)}</div>
-      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:0.5rem;margin-top:0.7rem;">
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:0.5rem;margin-top:0.7rem;">
         <div><div class="scan-label">RSI(14)</div>
              <div style="font-family:'IBM Plex Mono',monospace;font-size:0.95rem;font-weight:600;
                   color:{'#ef4444' if rsi<30 else '#f59e0b' if rsi<40 else '#e0e6f0'};">{rsi:.1f}</div></div>
@@ -254,6 +258,9 @@ def render_stock_card(stock, bt_summary=None):
         <div><div class="scan-label">4W Trend</div>
              <div style="font-family:'IBM Plex Mono',monospace;font-size:0.95rem;font-weight:600;
                   color:{'#00d4aa' if trend_4w>0 else '#ef4444'};"> {'▲' if trend_4w>0 else '▼'} {abs(trend_4w):.1f}%</div></div>
+        <div><div class="scan-label">MACD Hist</div>
+             <div style="font-family:'IBM Plex Mono',monospace;font-size:0.95rem;font-weight:600;
+                  color:{'#00d4aa' if macd_bullish else '#ef4444'};">{macd_hist:+.3f}</div></div>
         <div><div class="scan-label">🏦 Inst %</div>
              <div style="font-family:'IBM Plex Mono',monospace;font-size:0.95rem;font-weight:600;
                   color:{'#60a5fa' if inst_pct and inst_pct>=30 else '#6b7280'};">{f'{inst_pct:.0f}%' if inst_pct else 'N/A'}</div></div>
