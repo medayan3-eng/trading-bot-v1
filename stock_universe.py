@@ -1,6 +1,5 @@
 """
-Stock universe — S&P500 + growth + institutional + extended watchlists.
-All verified active as of March 2026.
+Stock universe — 659+ tickers. March 2026.
 """
 
 STOCK_UNIVERSE = [
@@ -69,5 +68,7 @@ STOCK_UNIVERSE = [
     "CENT", "CENTA", "CERT", "CEVA", "CFB", "CHDN", "CHE", "CHH", "CHUY", "CLBT",
     "CLF", "CLH", "CNO", "CNX", "CNXC", "COLM", "COMM", "COOP", "CORT", "COTY",
     "COUR", "CR", "CRDO", "CRK", "CRL", "CRSR", "CSGS", "CTRE", "CTVA", "CUBI",
-    "CVBF", "CVCO", "CVLT", "CWAN", "CWEN", "CWH", "CWK", "CXM", "CYTK",
+    "CVBF", "CVCO", "CVLT", "CWAN", "CWEN", "CWH", "CWK", "CXM", "CYTK", "URI",
+    "SMCI", "AMC", "VZ", "KTOS", "IRDM", "FIX", "VST", "STNG", "HUBB", "MP",
+    "STRL", "VMC",
 ]
