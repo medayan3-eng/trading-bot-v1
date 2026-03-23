@@ -60,7 +60,18 @@ def _trend_pct(close: pd.Series, days: int = 20) -> float:
     return round((end - start) / start * 100, 2)
 
 
-def _beta(close: pd.Series) -> float:
+def _macd(close: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9):
+    """Returns (macd_line, signal_line, histogram) latest values."""
+    if len(close) < slow + signal + 5:
+        return 0.0, 0.0, 0.0
+    ema_fast   = close.ewm(span=fast, adjust=False).mean()
+    ema_slow   = close.ewm(span=slow, adjust=False).mean()
+    macd_line  = ema_fast - ema_slow
+    signal_line= macd_line.ewm(span=signal, adjust=False).mean()
+    histogram  = macd_line - signal_line
+    return (round(float(macd_line.iloc[-1]), 4),
+            round(float(signal_line.iloc[-1]), 4),
+            round(float(histogram.iloc[-1]), 4))
     try:
         spy_df    = _get_ohlcv("SPY", period="6mo")
         if spy_df.empty or len(spy_df) < 40:
@@ -80,7 +91,7 @@ def _beta(close: pd.Series) -> float:
         return 1.0
 
 
-def debug_ticker(ticker: str, params: dict) -> str:
+def _beta(close: pd.Series) -> float:
     """Explains exactly why a ticker passed or failed all filters."""
     try:
         df = _get_ohlcv(ticker, period="1y")
@@ -189,7 +200,9 @@ def calculate_indicators(ticker: str, params: dict):
         if min_beta > 0 and beta < min_beta:
             return None
 
-        inst_pct = None
+        # ── MACD ─────────────────────────────────────────────────────
+        macd_line, macd_signal, macd_hist = _macd(close)
+        macd_bullish = macd_hist > 0  # histogram positive = bullish momentum
         min_inst = params.get('min_institutional', 0)
         if min_inst > 0:
             try:
@@ -239,6 +252,7 @@ def calculate_indicators(ticker: str, params: dict):
         if volume_ratio > 2.0:   score += 0.7
         elif volume_ratio > 1.5: score += 0.4
         if signal_is_fresh:      score += 0.5
+        if macd_bullish:         score += 0.5  # MACD histogram turning positive
         if inst_pct:
             if   inst_pct >= 60: score += 1.0
             elif inst_pct >= 40: score += 0.7
@@ -275,6 +289,10 @@ def calculate_indicators(ticker: str, params: dict):
             "institutional_pct": inst_pct,
             "signal_fresh":      signal_is_fresh,
             "signal_date":       datetime.today().strftime('%Y-%m-%d'),
+            "macd_line":         macd_line,
+            "macd_signal":       macd_signal,
+            "macd_hist":         macd_hist,
+            "macd_bullish":      macd_bullish,
             "score":             score,
             "passes_filter":     True,
         }
