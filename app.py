@@ -159,7 +159,7 @@ def render_sidebar():
         min_inst    = st.slider("Min Institutional %", 0, 80, 0)
         fresh_only  = st.checkbox("🟢 Fresh Signals (≤3 days)", value=False)
         st.markdown("---")
-        max_stocks = st.slider("Max stocks to scan", 50, 659, 659)
+        max_stocks = st.slider("Max stocks to scan", 50, 672, 672)
         st.markdown("---")
 
         run_scan = st.button("🔍 STEP 1 — RUN SCAN", use_container_width=True)
