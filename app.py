@@ -121,7 +121,7 @@ def render_market_bar():
       <div style="width:1px;background:#1e293b;align-self:stretch;"></div>
       {tiles}
       <div style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:#374151;">
-        🕐 {datetime.now().strftime('%H:%M:%S')}
+        🕐 {(datetime.utcnow() + timedelta(hours=3)).strftime('%H:%M:%S')} 🇮🇱
       </div>
     </div>
     """, unsafe_allow_html=True)
@@ -146,10 +146,12 @@ def render_sidebar():
         rsi_period = st.number_input("RSI Period", 5, 20, 14)
         st.caption(f"Stocks with RSI between {rsi_min} – {rsi_max}")
         st.markdown("---")
-        st.markdown("**Moving Averages**")
-        req200 = st.checkbox("Above MA200", value=True)
-        req50  = st.checkbox("Above MA50",  value=True)
-        req20  = st.checkbox("Above MA20 (optional)", value=False)
+        st.markdown("**Trend Filters**")
+        req200       = st.checkbox("Above MA200", value=True)
+        req50        = st.checkbox("Above MA50",  value=True)
+        req20        = st.checkbox("Above MA20 (optional)", value=False)
+        req_uptrend  = st.checkbox("📈 52-Week Uptrend (Murphy)", value=True,
+                                   help="מניה שמחירה גבוה יותר מלפני שנה, MA50>MA200, ומחיר מעל MA200")
         st.markdown("---")
         st.markdown("**Bollinger Bands**")
         bb_period = st.number_input("BB Period", 10, 30, 20)
@@ -175,6 +177,7 @@ def render_sidebar():
             min_price=min_price, min_volume=min_volume*1_000_000,
             min_beta=min_beta, rsi_min=rsi_min, rsi_max=rsi_max, rsi_period=int(rsi_period),
             require_above_200=req200, require_above_50=req50, require_above_20=req20,
+            require_uptrend_52w=req_uptrend,
             bb_period=int(bb_period), bb_std=bb_std,
             min_institutional=min_inst, show_fresh_only=fresh_only,
             max_stocks=max_stocks, run_scan=run_scan, run_backtest=run_bt,
@@ -209,65 +212,109 @@ def render_stock_card(stock, bt_summary=None):
     if trend_4w > 0:            badges.append('<span class="badge badge-green">4W UPTREND</span>')
     if macd_bullish:            badges.append('<span class="badge badge-green">MACD ✓</span>')
     else:                       badges.append('<span class="badge badge-red">MACD ✗</span>')
+def render_stock_card(stock, bt_summary=None):
+    score       = stock.get('score', 0)
+    rsi         = stock.get('rsi', 0)
+    bb_pct      = stock.get('bb_pct', 0.5)
+    trend_4w    = stock.get('trend_4w', 0)
+    beta        = stock.get('beta', 0)
+    macd_hist   = stock.get('macd_hist', 0)
+    macd_bullish= stock.get('macd_bullish', False)
+    inst_pct    = stock.get('institutional_pct')
+    fresh       = stock.get('signal_fresh', False)
+    sig_date    = stock.get('signal_date', '')
+    price       = stock.get('price', 0)
+    rs          = stock.get('rs', 1.0)
+    vol_ratio   = stock.get('volume_ratio', 1.0)
+    vol_spike   = stock.get('volume_spike', False)
+    support     = stock.get('support')
+    resistance  = stock.get('resistance')
+    near_sup    = stock.get('near_support', False)
+    patterns    = stock.get('patterns', [])
+    uptrend_52w = stock.get('uptrend_52w', False)
+    rr_ratio    = stock.get('rr_ratio', 0)
+    rr_valid    = stock.get('rr_valid', False)
+    rr_stop     = stock.get('rr_stop')
+    rr_target   = stock.get('rr_target')
+    summary     = stock.get('summary', '')
+    ticker      = stock['ticker']
+    sig_col     = "#00d4aa" if score >= 7 else "#f59e0b" if score >= 5 else "#ef4444"
+
+    tv_url = f"https://www.tradingview.com/chart/?symbol={ticker}&interval=D"
+
+    badges = []
+    if stock.get('above_200'):  badges.append('<span class="badge badge-green">MA200 ✓</span>')
+    if stock.get('above_50'):   badges.append('<span class="badge badge-green">MA50 ✓</span>')
+    if uptrend_52w:             badges.append('<span class="badge badge-green">📈 52W UPTREND</span>')
+    if rsi < 30:                badges.append('<span class="badge badge-red">RSI EXTREME</span>')
+    elif rsi < 40:              badges.append('<span class="badge badge-yellow">RSI OVERSOLD</span>')
+    if bb_pct < 0.2:            badges.append('<span class="badge badge-green">BB LOWER ✓</span>')
+    if trend_4w > 0:            badges.append('<span class="badge badge-green">4W UPTREND</span>')
+    if macd_bullish:            badges.append('<span class="badge badge-green">MACD ✓</span>')
+    else:                       badges.append('<span class="badge badge-red">MACD ✗</span>')
+    if vol_spike:               badges.append('<span class="badge badge-yellow">⚡ VOL SPIKE</span>')
+    if near_sup:                badges.append('<span class="badge badge-green">🎯 NEAR SUPPORT</span>')
+    if patterns:                badges.append(f'<span class="badge badge-blue">📐 {patterns[0]}</span>')
+    if rr_valid:                badges.append(f'<span class="badge badge-green">R/R 1:{rr_ratio}</span>')
     if inst_pct and inst_pct >= 30:
-        badges.append(f'<span class="badge badge-blue">🏦 {inst_pct:.0f}% INST</span>')
+        badges.append(f'<span class="badge badge-blue">🏦 {inst_pct:.0f}%</span>')
     badges.append('<span class="badge badge-green">🟢 FRESH</span>' if fresh else
                   '<span class="badge badge-yellow">⚠️ LATE</span>')
 
-    # Backtest inline block
     bt_html = ""
     if bt_summary:
-        wr    = bt_summary.get('win_rate', 0)
-        tot   = bt_summary.get('total_trades', 0)
-        avg_r = bt_summary.get('avg_return', 0)
-        wc    = "#00d4aa" if wr >= 60 else "#f59e0b" if wr >= 45 else "#ef4444"
-        bt_html = f"""
-        <div style="margin-top:0.7rem;padding:0.6rem 0.9rem;background:#0d1117;
-                    border-radius:6px;border:1px solid #1e293b;display:flex;gap:2rem;">
-          <div><div class="scan-label">📊 Win Rate</div>
-               <div style="font-family:'IBM Plex Mono',monospace;font-size:1.1rem;font-weight:700;color:{wc};">{wr:.0f}%</div></div>
-          <div><div class="scan-label">Trades (1yr)</div>
-               <div style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:#e0e6f0;">{tot}</div></div>
-          <div><div class="scan-label">Avg Return</div>
-               <div style="font-family:'IBM Plex Mono',monospace;font-size:1rem;
-                    color:{'#00d4aa' if avg_r>=0 else '#ef4444'};">{avg_r:+.1f}%</div></div>
+        wr, tot, avg_r = bt_summary.get('win_rate',0), bt_summary.get('total_trades',0), bt_summary.get('avg_return',0)
+        wc = "#00d4aa" if wr>=60 else "#f59e0b" if wr>=45 else "#ef4444"
+        bt_html = f"""<div style="margin-top:0.5rem;padding:0.5rem 0.9rem;background:#0d1117;border-radius:6px;border:1px solid #1e293b;display:flex;gap:2rem;">
+          <div><div class="scan-label">📊 Win Rate</div><div style="font-family:'IBM Plex Mono',monospace;font-size:1rem;font-weight:700;color:{wc};">{wr:.0f}%</div></div>
+          <div><div class="scan-label">Trades</div><div style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:#e0e6f0;">{tot}</div></div>
+          <div><div class="scan-label">Avg Return</div><div style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:{'#00d4aa' if avg_r>=0 else '#ef4444'};">{avg_r:+.1f}%</div></div>
         </div>"""
+
+    sr_parts = []
+    if support:    sr_parts.append(f'<span style="color:#00d4aa;">🟩 Support: ${support}</span>')
+    if resistance: sr_parts.append(f'<span style="color:#ef4444;">🟥 Resistance: ${resistance}</span>')
+    if rr_valid:   sr_parts.append(f'<span style="color:#f59e0b;">Stop: ${rr_stop} → Target: ${rr_target} (1:{rr_ratio})</span>')
+    sr_html = f'<div style="margin-top:0.4rem;font-size:0.78rem;font-family:\'IBM Plex Mono\',monospace;">{" &nbsp;|&nbsp; ".join(sr_parts)}</div>' if sr_parts else ""
+
+    summary_html = f'<div style="margin-top:0.5rem;padding:0.5rem 0.8rem;background:rgba(0,212,170,0.06);border-left:3px solid #00d4aa;border-radius:0 6px 6px 0;font-size:0.8rem;color:#9ca3af;line-height:1.5;">💡 {summary}</div>' if summary else ""
 
     st.markdown(f"""
     <div class="stock-card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-        <div>
-          <span class="ticker-symbol">{stock['ticker']}</span>
-          <span style="color:#6b7280;font-size:0.78rem;margin-left:0.6rem;">{stock.get('name','')}</span>
-        </div>
+        <div><span class="ticker-symbol">{ticker}</span>
+             <span style="color:#6b7280;font-size:0.78rem;margin-left:0.6rem;">{stock.get('name','')}</span></div>
         <div style="text-align:right;">
           <div class="price-display">${price:.2f}</div>
           <div style="font-weight:600;color:{sig_col};font-size:0.85rem;">Score: {score}/10</div>
         </div>
       </div>
-      <div style="margin:0.6rem 0;">{''.join(badges)}</div>
-      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:0.5rem;margin-top:0.7rem;">
+      <div style="margin:0.5rem 0;">{''.join(badges)}</div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:0.4rem;margin-top:0.6rem;">
         <div><div class="scan-label">RSI(14)</div>
-             <div style="font-family:'IBM Plex Mono',monospace;font-size:0.95rem;font-weight:600;
+             <div style="font-family:'IBM Plex Mono',monospace;font-size:0.9rem;font-weight:600;
                   color:{'#ef4444' if rsi<30 else '#f59e0b' if rsi<40 else '#e0e6f0'};">{rsi:.1f}</div></div>
-        <div><div class="scan-label">Beta</div>
-             <div style="font-family:'IBM Plex Mono',monospace;font-size:0.95rem;font-weight:600;color:#00d4aa;">{beta:.2f}</div></div>
-        <div><div class="scan-label">BB%B</div>
-             <div style="font-family:'IBM Plex Mono',monospace;font-size:0.95rem;font-weight:600;
-                  color:{'#00d4aa' if bb_pct<0.2 else '#e0e6f0'};">{bb_pct:.2f}</div></div>
-        <div><div class="scan-label">4W Trend</div>
-             <div style="font-family:'IBM Plex Mono',monospace;font-size:0.95rem;font-weight:600;
-                  color:{'#00d4aa' if trend_4w>0 else '#ef4444'};"> {'▲' if trend_4w>0 else '▼'} {abs(trend_4w):.1f}%</div></div>
         <div><div class="scan-label">MACD Hist</div>
-             <div style="font-family:'IBM Plex Mono',monospace;font-size:0.95rem;font-weight:600;
+             <div style="font-family:'IBM Plex Mono',monospace;font-size:0.9rem;font-weight:600;
                   color:{'#00d4aa' if macd_bullish else '#ef4444'};">{macd_hist:+.3f}</div></div>
-        <div><div class="scan-label">🏦 Inst %</div>
-             <div style="font-family:'IBM Plex Mono',monospace;font-size:0.95rem;font-weight:600;
-                  color:{'#60a5fa' if inst_pct and inst_pct>=30 else '#6b7280'};">{f'{inst_pct:.0f}%' if inst_pct else 'N/A'}</div></div>
+        <div><div class="scan-label">BB%B</div>
+             <div style="font-family:'IBM Plex Mono',monospace;font-size:0.9rem;font-weight:600;
+                  color:{'#00d4aa' if bb_pct<0.2 else '#e0e6f0'};">{bb_pct:.2f}</div></div>
+        <div><div class="scan-label">RS vs SPY</div>
+             <div style="font-family:'IBM Plex Mono',monospace;font-size:0.9rem;font-weight:600;
+                  color:{'#00d4aa' if rs>1 else '#ef4444'};">{rs:+.2f}</div></div>
+        <div><div class="scan-label">Vol Ratio</div>
+             <div style="font-family:'IBM Plex Mono',monospace;font-size:0.9rem;font-weight:600;
+                  color:{'#f59e0b' if vol_spike else '#e0e6f0'};"> {'⚡' if vol_spike else ''}{vol_ratio:.1f}x</div></div>
+        <div><div class="scan-label">4W Trend</div>
+             <div style="font-family:'IBM Plex Mono',monospace;font-size:0.9rem;font-weight:600;
+                  color:{'#00d4aa' if trend_4w>0 else '#ef4444'};"> {'▲' if trend_4w>0 else '▼'} {abs(trend_4w):.1f}%</div></div>
       </div>
+      {sr_html}
+      {summary_html}
       <div style="margin-top:0.5rem;font-size:0.7rem;font-family:'IBM Plex Mono',monospace;color:#4a5568;">
-        📅 Signal: <span style="color:{'#00d4aa' if fresh else '#f59e0b'};">{sig_date}</span>
-        &nbsp;{'✅ Buy now' if fresh else '⚠️ Verify — may be late'}
+        📅 {sig_date} &nbsp;{'✅ Buy now' if fresh else '⚠️ Verify'}
+        &nbsp;&nbsp;<a href="{tv_url}" target="_blank" style="color:#60a5fa;text-decoration:none;">📊 TradingView Chart →</a>
       </div>
       {bt_html}
     </div>
