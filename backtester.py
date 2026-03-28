@@ -51,10 +51,12 @@ def _backtest_one(ticker: str, params: dict) -> dict:
 
         close = df['Close']
 
-        # Parameters — use what the user set, with sensible defaults
+        # Parameters — use RELAXED fixed params for backtest to generate enough trades
+        # The screener already filtered the stocks; backtest just needs to find
+        # the entry/exit points on those same stocks
         rsi_period = params.get('rsi_period', 14)
-        rsi_max    = params.get('rsi_max', 50)      # use user's RSI max
-        rsi_min    = params.get('rsi_min', 0)
+        rsi_max    = 55      # relaxed: catch more entry points historically
+        rsi_min    = 0
         bb_period  = params.get('bb_period', 20)
         bb_std     = params.get('bb_std', 2.0)
 
