@@ -639,12 +639,16 @@ def main():
             st.warning("⚠️ Run Step 1 first!")
         else:
             tickers = [r['ticker'] for r in scan_res]
-            st.info(f"📊 Backtesting {len(tickers)} scanned stocks — 1 year, all trades…")
+            st.info(f"📊 Backtesting {len(tickers)} stocks with RSI range {params.get('rsi_min',0)}–{params.get('rsi_max',90)}…")
             pb2 = st.progress(0)
             st2 = st.empty()
             bt = run_backtest_on_screened(tickers, params, pb2, st2)
             st.session_state.backtest_results = bt
             pb2.empty(); st2.empty()
+            # Show note if 0 trades
+            note = bt.get('note','')
+            if note:
+                st.warning(f"⚠️ {note}")
 
     # ── DISPLAY ───────────────────────────────────────────
     results = st.session_state.scan_results
