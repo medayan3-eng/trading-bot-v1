@@ -12,7 +12,7 @@ warnings.filterwarnings('ignore')
 from screener import calculate_indicators, debug_ticker
 from backtester import run_backtest_on_screened
 from news_fetcher import fetch_news
-from news_intelligence import run_news_intelligence
+from news_intelligence import run_news_intelligence, run_vix_analysis
 from stock_universe import STOCK_UNIVERSE
 
 st.set_page_config(
@@ -429,109 +429,155 @@ def render_backtest_panel(bt_data):
 # ══════════════════════════════════════════════
 def render_news_intelligence():
     st.markdown("### 🧠 AI News Intelligence")
-    st.caption("Claude reads today's market headlines and identifies opportunities & risks")
 
-    if st.button("🔍 Analyze Today's News", use_container_width=True, key="ni_btn"):
-        with st.spinner("Fetching headlines and running AI analysis..."):
-            result = run_news_intelligence()
-            st.session_state['news_intel'] = result
+    ni_tab1, ni_tab2 = st.tabs(["📰 News Analysis", "😨 VIX Spike History"])
 
-    result = st.session_state.get('news_intel')
-    if not result:
-        st.info("Press the button above to analyze today's market news.")
-        return
+    with ni_tab1:
+        st.caption("Reads news from Yahoo Finance, Google News, Seeking Alpha, Bizportal, Calcalist")
+        if st.button("🔍 Analyze Today's News", use_container_width=True, key="ni_btn"):
+            with st.spinner("Fetching from all news sources + AI analysis..."):
+                result = run_news_intelligence()
+                st.session_state['news_intel'] = result
 
-    if result.get('error'):
-        st.error(result['error'])
-        return
+        result = st.session_state.get('news_intel')
+        if not result:
+            st.info("Press the button above to analyze today's market news from multiple sources.")
+            return
 
-    # Summary
-    ts = result.get('timestamp', '')
-    st.markdown(f"**🕐 Last updated: {ts}**")
-    summary = result.get('summary', '')
-    if summary:
+        if result.get('error'):
+            st.error(result['error'])
+            return
+
+        ts = result.get('timestamp')
+        ts_str = ts.strftime('%H:%M:%S 🇮🇱') if hasattr(ts, 'strftime') else str(ts)
+        src_count = result.get('source_count', 0)
+        macro = result.get('macro_signal', 'NEUTRAL')
+        macro_col = "#00d4aa" if macro == "BULLISH" else "#ef4444" if macro == "BEARISH" else "#f59e0b"
+
         st.markdown(f"""
-        <div style="background:#111827;border:1px solid #1e293b;border-left:4px solid #00d4aa;
-                    border-radius:8px;padding:1rem 1.2rem;margin:0.8rem 0;">
-            <div style="font-size:0.75rem;color:#4a5568;text-transform:uppercase;letter-spacing:1px;margin-bottom:0.4rem;">
-                📰 Market Summary
-            </div>
-            <div style="color:#e0e6f0;font-size:0.92rem;line-height:1.6;">{summary}</div>
+        <div style="display:flex;gap:1rem;align-items:center;margin-bottom:0.8rem;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:#4a5568;">🕐 {ts_str}</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:#4a5568;">📡 {src_count} sources</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:{macro_col};
+                border:1px solid {macro_col};border-radius:4px;padding:0.1rem 0.4rem;">
+            {macro}
+          </span>
         </div>""", unsafe_allow_html=True)
 
-    # Key themes
-    themes = result.get('key_themes', [])
-    if themes:
-        theme_html = " ".join(
-            f'<span style="background:rgba(59,130,246,0.15);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);'
-            f'border-radius:4px;padding:0.2rem 0.6rem;font-size:0.75rem;font-family:IBM Plex Mono,monospace;'
-            f'margin:0.1rem;display:inline-block;">{t}</span>'
-            for t in themes
-        )
-        st.markdown(f'<div style="margin:0.5rem 0;">{theme_html}</div>', unsafe_allow_html=True)
+        summary = result.get('summary', '')
+        if summary:
+            st.markdown(f'<div style="background:#111827;border:1px solid #1e293b;border-left:4px solid #00d4aa;'
+                        f'border-radius:8px;padding:1rem 1.2rem;margin:0.8rem 0;">'
+                        f'<div style="font-size:0.75rem;color:#4a5568;text-transform:uppercase;letter-spacing:1px;'
+                        f'margin-bottom:0.4rem;">📰 Market Summary</div>'
+                        f'<div style="color:#e0e6f0;font-size:0.92rem;line-height:1.6;">{summary}</div>'
+                        f'</div>', unsafe_allow_html=True)
 
-    col1, col2 = st.columns(2)
+        themes = result.get('key_themes', [])
+        if themes:
+            html = " ".join(
+                f'<span style="background:rgba(59,130,246,0.15);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);'
+                f'border-radius:4px;padding:0.2rem 0.6rem;font-size:0.75rem;margin:0.1rem;display:inline-block;">{t}</span>'
+                for t in themes)
+            st.markdown(f'<div style="margin:0.5rem 0;">{html}</div>', unsafe_allow_html=True)
 
-    # WATCH stocks
-    with col1:
-        st.markdown("#### 🟢 Stocks to WATCH")
-        watch = result.get('watch', [])
-        if not watch:
-            st.info("No strong buy signals from news.")
-        for item in watch:
-            conf   = item.get('confidence', 'LOW')
-            conf_c = "#00d4aa" if conf == "HIGH" else "#f59e0b" if conf == "MEDIUM" else "#6b7280"
-            st.markdown(f"""
-            <div style="background:#111827;border:1px solid #1e293b;border-left:3px solid #00d4aa;
-                        border-radius:8px;padding:0.8rem 1rem;margin:0.35rem 0;">
-                <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <span style="font-family:'IBM Plex Mono',monospace;font-size:1.1rem;font-weight:700;color:#00d4aa;">
-                        {item.get('ticker','')}
-                    </span>
-                    <span style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;
-                                 color:{conf_c};border:1px solid {conf_c};border-radius:4px;padding:0.1rem 0.4rem;">
-                        {conf}
-                    </span>
-                </div>
-                <div style="color:#9ca3af;font-size:0.8rem;margin-top:0.3rem;">{item.get('theme','')}</div>
-                <div style="color:#e0e6f0;font-size:0.82rem;margin-top:0.3rem;">{item.get('reason','')}</div>
-            </div>""", unsafe_allow_html=True)
+        col1, col2 = st.columns(2)
+        for col, title, items, border_c in [
+            (col1, "🟢 WATCH", result.get('watch', []), "#00d4aa"),
+            (col2, "🔴 AVOID", result.get('avoid', []), "#ef4444"),
+        ]:
+            with col:
+                st.markdown(f"#### {title}")
+                if not items:
+                    st.info("No signals.")
+                for item in items:
+                    conf = item.get('confidence', 'LOW')
+                    cc   = border_c if conf == "HIGH" else "#f59e0b" if conf == "MEDIUM" else "#6b7280"
+                    st.markdown(
+                        f'<div style="background:#111827;border:1px solid #1e293b;border-left:3px solid {border_c};'
+                        f'border-radius:8px;padding:0.8rem 1rem;margin:0.35rem 0;">'
+                        f'<div style="display:flex;justify-content:space-between;">'
+                        f'<span style="font-family:IBM Plex Mono,monospace;font-size:1.1rem;font-weight:700;color:{border_c};">'
+                        f'{item.get("ticker","")}</span>'
+                        f'<span style="font-family:IBM Plex Mono,monospace;font-size:0.72rem;color:{cc};'
+                        f'border:1px solid {cc};border-radius:4px;padding:0.1rem 0.4rem;">{conf}</span></div>'
+                        f'<div style="color:#9ca3af;font-size:0.78rem;margin-top:0.2rem;">{item.get("theme","")}</div>'
+                        f'<div style="color:#e0e6f0;font-size:0.82rem;margin-top:0.2rem;">{item.get("reason","")}</div>'
+                        f'</div>', unsafe_allow_html=True)
 
-    # AVOID stocks
-    with col2:
-        st.markdown("#### 🔴 Stocks to AVOID")
-        avoid = result.get('avoid', [])
-        if not avoid:
-            st.info("No strong sell signals from news.")
-        for item in avoid:
-            conf   = item.get('confidence', 'LOW')
-            conf_c = "#ef4444" if conf == "HIGH" else "#f59e0b" if conf == "MEDIUM" else "#6b7280"
-            st.markdown(f"""
-            <div style="background:#111827;border:1px solid #1e293b;border-left:3px solid #ef4444;
-                        border-radius:8px;padding:0.8rem 1rem;margin:0.35rem 0;">
-                <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <span style="font-family:'IBM Plex Mono',monospace;font-size:1.1rem;font-weight:700;color:#ef4444;">
-                        {item.get('ticker','')}
-                    </span>
-                    <span style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;
-                                 color:{conf_c};border:1px solid {conf_c};border-radius:4px;padding:0.1rem 0.4rem;">
-                        {conf}
-                    </span>
-                </div>
-                <div style="color:#9ca3af;font-size:0.8rem;margin-top:0.3rem;">{item.get('theme','')}</div>
-                <div style="color:#e0e6f0;font-size:0.82rem;margin-top:0.3rem;">{item.get('reason','')}</div>
-            </div>""", unsafe_allow_html=True)
+        with st.expander(f"📋 Headlines ({len(result.get('headlines',[]))})"):
+            for h in result.get('headlines', [])[:30]:
+                src_badge = f'<span style="background:rgba(59,130,246,0.1);color:#60a5fa;font-size:0.68rem;' \
+                            f'border-radius:3px;padding:0.1rem 0.3rem;margin-right:0.3rem;">{h.get("source","")}</span>'
+                st.markdown(
+                    f'<div style="padding:0.3rem 0;border-bottom:1px solid #1e293b;">'
+                    f'{src_badge}'
+                    f'<span style="color:#4a5568;font-size:0.7rem;">{h.get("published","")}</span> '
+                    f'<a href="{h.get("url","#")}" target="_blank" style="color:#60a5fa;font-size:0.82rem;">'
+                    f'{h.get("title","")}</a></div>', unsafe_allow_html=True)
 
-    # Raw headlines
-    with st.expander("📋 Raw Headlines Used"):
-        for h in result.get('headlines', [])[:20]:
-            st.markdown(
-                f'<div style="padding:0.3rem 0;border-bottom:1px solid #1e293b;">'
-                f'<span style="color:#4a5568;font-size:0.72rem;font-family:IBM Plex Mono,monospace;">'
-                f'{h.get("published","")}</span> '
-                f'<a href="{h.get("url","#")}" target="_blank" style="color:#60a5fa;font-size:0.82rem;">'
-                f'{h.get("title","")}</a></div>',
-                unsafe_allow_html=True)
+    with ni_tab2:
+        st.markdown("### 😨 כשמדד הפחד מזנק — מה קרה למניות?")
+        st.caption("ניתוח היסטורי: מניות שעלו/ירדו כשה-VIX חצה סף מסוים")
+
+        col_a, col_b = st.columns(2)
+        with col_a:
+            vix_thresh = st.slider("VIX Threshold", 20.0, 45.0, 25.0, 0.5)
+        with col_b:
+            fwd_days = st.slider("Forward days", 3, 30, 10)
+
+        if st.button("🔍 Analyze VIX Spikes", use_container_width=True, key="vix_btn"):
+            with st.spinner(f"Analyzing historical VIX spikes above {vix_thresh}..."):
+                vix_result = run_vix_analysis(vix_thresh, fwd_days)
+                st.session_state['vix_analysis'] = vix_result
+
+        vr = st.session_state.get('vix_analysis')
+        if not vr:
+            st.info("לחץ על הכפתור לניתוח היסטורי")
+            return
+
+        if vr.get('error'):
+            st.error(vr['error'])
+            return
+
+        st.markdown(f"""
+        <div style="background:#111827;border:1px solid #1e293b;border-radius:8px;padding:1rem;margin-bottom:1rem;">
+          <span style="font-family:'IBM Plex Mono',monospace;color:#f59e0b;font-size:1rem;">
+            VIX נוכחי: {vr.get('current_vix','?')} &nbsp;|&nbsp;
+            {vr.get('total_spikes',0)} פעמים ה-VIX חצה {vr.get('threshold','?')} בשנתיים האחרונות
+          </span><br>
+          <span style="font-size:0.78rem;color:#4a5568;">
+            תאריכי הפריצה: {', '.join(vr.get('spike_dates',[])[-5:])}
+          </span>
+        </div>""", unsafe_allow_html=True)
+
+        if vr.get('message'):
+            st.info(vr['message'])
+            return
+
+        cv1, cv2 = st.columns(2)
+        with cv1:
+            st.markdown(f"#### 🟢 עלו — {fwd_days} ימים אחרי פריצת VIX")
+            for item in vr.get('winners', []):
+                t, r = item['ticker'], item['avg_return']
+                badge = "🛡️ defensive" if item.get('type') == 'safe_haven' else ""
+                st.markdown(
+                    f'<div style="background:#111827;border-left:3px solid #00d4aa;border-radius:6px;'
+                    f'padding:0.5rem 0.8rem;margin:0.25rem 0;display:flex;justify-content:space-between;">'
+                    f'<span style="font-family:IBM Plex Mono,monospace;color:#00d4aa;font-weight:700;">{t}</span>'
+                    f'<span style="font-family:IBM Plex Mono,monospace;color:#00d4aa;">{r:+.1f}% {badge}</span>'
+                    f'</div>', unsafe_allow_html=True)
+
+        with cv2:
+            st.markdown(f"#### 🔴 ירדו — {fwd_days} ימים אחרי פריצת VIX")
+            for item in vr.get('losers', []):
+                t, r = item['ticker'], item['avg_return']
+                st.markdown(
+                    f'<div style="background:#111827;border-left:3px solid #ef4444;border-radius:6px;'
+                    f'padding:0.5rem 0.8rem;margin:0.25rem 0;display:flex;justify-content:space-between;">'
+                    f'<span style="font-family:IBM Plex Mono,monospace;color:#ef4444;font-weight:700;">{t}</span>'
+                    f'<span style="font-family:IBM Plex Mono,monospace;color:#ef4444;">{r:+.1f}%</span>'
+                    f'</div>', unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════
