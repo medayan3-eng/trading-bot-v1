@@ -190,7 +190,7 @@ def _fetch_calcalist_rss() -> list:
                 if t:
                     headlines.append({
                         'title':     t,
-                        'publisher': 'כלכליסט 🇮🇱',
+                        'publisher': 'Calcalist IL 🇮🇱',
                         'published': '',
                         'url':       link.group(1).strip() if link else '',
                         'source':    'Calcalist',
