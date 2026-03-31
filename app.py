@@ -87,36 +87,117 @@ def fetch_market_data():
             result[label] = {"value": curr, "change_pct": chg_p}
         except:
             result[label] = {"value": 0, "change_pct": 0}
+
+    # VIX3M (VXVCLS or ^VIX3M) for VIX/VIX3M ratio
+    try:
+        vix3m = yf.Ticker("^VIX3M").history(period="2d", interval="1d")
+        if not vix3m.empty:
+            result["VIX3M"] = {"value": float(vix3m['Close'].iloc[-1])}
+        else:
+            # fallback: try VXVCLS
+            vix3m2 = yf.Ticker("VXVCLS").history(period="2d", interval="1d")
+            if not vix3m2.empty:
+                result["VIX3M"] = {"value": float(vix3m2['Close'].iloc[-1])}
+    except:
+        pass
+
     return result
 
 
-def render_market_bar():
-    data = fetch_market_data()
-    vix  = data.get("VIX", {}).get("value", 0)
+def _vix_regime(vix: float, ratio: float) -> dict:
+    """Returns regime info: color, status, preferred assets, warning."""
+    if vix <= 0:
+        return {"cls": "green", "msg": "No data", "assets": "", "ratio_status": ""}
 
-    if   vix <= 0:  vix_cls = "green";  vix_msg = "No data"
-    elif vix < 20:  vix_cls = "green";  vix_msg = "✅ Low fear — safe to trade"
-    elif vix < 28:  vix_cls = "yellow"; vix_msg = "⚠️ Caution — institutional stocks only"
-    else:           vix_cls = "red";    vix_msg = "🚫 High fear — DO NOT enter today"
+    # VIX/VIX3M ratio interpretation
+    if ratio > 0:
+        if ratio >= 1.0:
+            ratio_status = f"🚨 BACKWARDATION ({ratio:.2f}) — שוק בפאניקה! כסף רק למקלטים"
+            ratio_color  = "#ef4444"
+        elif ratio >= 0.9:
+            ratio_status = f"⚠️ Contango מתהדק ({ratio:.2f}) — זהירות"
+            ratio_color  = "#f59e0b"
+        else:
+            ratio_status = f"✅ Contango תקין ({ratio:.2f}) — שוק שיוט"
+            ratio_color  = "#00d4aa"
+    else:
+        ratio_status = ""
+        ratio_color  = "#4a5568"
+
+    # Regime by VIX level
+    if vix < 15:
+        return {
+            "cls":    "green",
+            "msg":    "✅ VIX נמוך — אפשר לקנות מניות צמיחה",
+            "assets": "💹 נכסים מועדפים: טכנולוגיה (XLK) · Small Caps (IWM) · צריכה מחזורית (XLY)",
+            "assets_color": "#00d4aa",
+            "ratio_status": ratio_status,
+            "ratio_color":  ratio_color,
+        }
+    elif vix < 20:
+        return {
+            "cls":    "green",
+            "msg":    "✅ Low fear — safe to trade",
+            "assets": "💹 נכסים מועדפים: מניות צמיחה · טכנולוגיה · Small Caps",
+            "assets_color": "#00d4aa",
+            "ratio_status": ratio_status,
+            "ratio_color":  ratio_color,
+        }
+    elif vix < 30:
+        return {
+            "cls":    "yellow",
+            "msg":    "⚠️ VIX בינוני-גבוה — רוטציה לדפנסיב",
+            "assets": "🛡️ נכסים מועדפים: תשתיות (XLU) · בריאות (XLV) · צריכת בסיס (XLP) · מניות דיבידנד",
+            "assets_color": "#f59e0b",
+            "ratio_status": ratio_status,
+            "ratio_color":  ratio_color,
+        }
+    else:
+        return {
+            "cls":    "red",
+            "msg":    "🚫 VIX קיצוני — מקלטי חירום בלבד",
+            "assets": "🏦 נכסים מועדפים: מזומן · זהב (GLD) · כסף (SLV) · אג\"ח קצר (SHY/BIL)",
+            "assets_color": "#ef4444",
+            "ratio_status": ratio_status,
+            "ratio_color":  ratio_color,
+        }
+
+
+def render_market_bar():
+    data   = fetch_market_data()
+    vix    = data.get("VIX",   {}).get("value", 0)
+    vix3m  = data.get("VIX3M", {}).get("value", 0)
+    ratio  = round(vix / vix3m, 3) if vix3m > 0 else 0
+    regime = _vix_regime(vix, ratio)
+
+    vix_str   = f"{vix:.2f}"   if vix   else "—"
+    vix3m_str = f"{vix3m:.2f}" if vix3m else "—"
+    ratio_str = f"{ratio:.3f}" if ratio else "—"
 
     def tile(label, d):
         v, chg = d.get("value", 0), d.get("change_pct", 0)
-        col = "#00d4aa" if chg >= 0 else "#ef4444"
+        col   = "#00d4aa" if chg >= 0 else "#ef4444"
         arrow = "▲" if chg >= 0 else "▼"
         return (f'<div class="mkt-item"><span class="mkt-label">{label}</span>'
                 f'<span class="mkt-val">{v:,.2f}</span>'
                 f'<span class="mkt-chg" style="color:{col}">{arrow} {abs(chg):.2f}%</span></div>')
 
-    tiles = "".join(tile(k, v) for k, v in data.items() if k != "VIX")
-    vix_str = f"{vix:.2f}" if vix else "—"
-    msg_col = {"green": "#00d4aa", "yellow": "#f59e0b", "red": "#ef4444"}[vix_cls]
+    tiles = "".join(tile(k, v) for k, v in data.items() if k not in ("VIX","VIX3M"))
+
+    ratio_badge = ""
+    if ratio > 0:
+        rc = regime["ratio_color"]
+        ratio_badge = (f'<div style="font-family:IBM Plex Mono,monospace;font-size:0.7rem;'
+                       f'color:{rc};margin-top:0.2rem;">'
+                       f'VIX/VIX3M: <b>{ratio_str}</b></div>')
 
     st.markdown(f"""
     <div class="market-bar">
-      <div class="fear-box fear-box-{vix_cls}">
+      <div class="fear-box fear-box-{regime['cls']}">
         <span class="fear-label">😨 VIX Fear Index</span>
-        <span class="fear-val-{vix_cls}">{vix_str}</span>
-        <span class="fear-msg" style="color:{msg_col}">{vix_msg}</span>
+        <span class="fear-val-{regime['cls']}">{vix_str}</span>
+        <span class="fear-msg" style="color:{'#00d4aa' if regime['cls']=='green' else '#f59e0b' if regime['cls']=='yellow' else '#ef4444'};">{regime['msg']}</span>
+        {ratio_badge}
       </div>
       <div style="width:1px;background:#1e293b;align-self:stretch;"></div>
       {tiles}
@@ -125,6 +206,27 @@ def render_market_bar():
       </div>
     </div>
     """, unsafe_allow_html=True)
+
+    # Sector rotation guidance bar
+    assets       = regime.get("assets", "")
+    assets_color = regime.get("assets_color", "#e0e6f0")
+    ratio_line   = regime.get("ratio_status", "")
+    rc           = regime.get("ratio_color", "#4a5568")
+
+    if assets:
+        st.markdown(f"""
+        <div style="background:#0d1117;border:1px solid #1e293b;border-radius:8px;
+                    padding:0.6rem 1.2rem;margin-bottom:0.8rem;display:flex;
+                    flex-direction:column;gap:0.2rem;">
+          <div style="font-size:0.82rem;color:{assets_color};">{assets}</div>
+          {'<div style="font-size:0.78rem;color:' + rc + ';">' + ratio_line + '</div>' if ratio_line else ''}
+          <div style="font-size:0.68rem;color:#4a5568;">
+            VIX: {vix_str} &nbsp;|&nbsp; VIX3M: {vix3m_str} &nbsp;|&nbsp; יחס: {ratio_str}
+            {'&nbsp;|&nbsp; <b style="color:#ef4444;">BACKWARDATION — מוסדיים מוציאים כסף מהשוק!</b>' if ratio >= 1.0 else ''}
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+
     return vix
 
 
@@ -590,10 +692,10 @@ def main():
     vix    = render_market_bar()
     params = render_sidebar()
 
-    if vix >= 28:
-        st.error("🚫 **VIX above 28 — Very high fear. Do not enter new positions today.**")
+    if vix >= 30:
+        st.error("🚫 **VIX מעל 30 — מצב חירום! כסף רק למזומן, זהב, אג\"ח קצר. אל תיכנס למניות.**")
     elif vix >= 20:
-        st.warning("⚠️ **VIX 20–28 — Caution. Only consider stocks with strong institutional ownership (>50%).**")
+        st.warning("⚠️ **VIX 20–30 — רוטציה לדפנסיב: תשתיות (XLU), בריאות (XLV), צריכת בסיס (XLP). הימנע מהייטק.**")
 
     for k in ['scan_results', 'backtest_results']:
         if k not in st.session_state:
