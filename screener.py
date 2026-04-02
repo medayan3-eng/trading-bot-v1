@@ -5,8 +5,59 @@ from datetime import datetime, timedelta
 
 
 # ──────────────────────────────────────────────────────────────
-#  DATA DOWNLOAD
+#  VIX REGIME — PRIORITY TICKERS
 # ──────────────────────────────────────────────────────────────
+VIX_REGIMES = {
+    "low": {          # VIX < 20 — Risk-On
+        "label":   "Risk-On (VIX < 20)",
+        "color":   "#00d4aa",
+        "tickers": [
+            "AAPL","MSFT","NVDA","AMZN","GOOGL","META","AMD","INTC","QCOM",
+            "AMAT","LRCX","KLAC","MU","MRVL",
+            "PLTR","CRWD","PANW","DDOG","NET","DOCU","ZM","SHOP","SQ","PYPL","TWLO","WDAY","TEAM",
+            "COIN","MSTR","HUT","WULF","TSLA","RIVN","NIO",
+            "AFRM","UPST","SOFI","ABNB","UBER","LYFT","SPOT","NFLX",
+        ],
+        "desc": "Tech, Semis, SaaS, Crypto, Growth — highest beta plays",
+    },
+    "mid": {          # 20 <= VIX <= 30 — Transition / Value
+        "label":   "Rotation Mode (VIX 20-30)",
+        "color":   "#f59e0b",
+        "tickers": [
+            "JPM","GS","MS","BX","KKR","APO","V","MA","AXP","PNC","USB",
+            "XOM","CVX","COP","SLB","HAL","MPC","PSX","OXY","DVN","EOG","KMI","WMB",
+            "CAT","DE","BA","LMT","RTX","NOC","GD","HON","UPS","FDX",
+            "FCX","ALB","DD","DOW","LYB",
+        ],
+        "desc": "Financials, Energy, Industrials, Materials — cash flow plays",
+    },
+    "high": {         # VIX > 30 — Risk-Off
+        "label":   "Defensive (VIX > 30)",
+        "color":   "#ef4444",
+        "tickers": [
+            "PG","KO","PEP","WMT","COST","MCD","MDLZ","CL","KMB","HSY","KR",
+            "JNJ","UNH","LLY","ABBV","MRK","AMGN","CI","HUM","SYK","MDT",
+            "NEE","DUK","SO","D","AEP","EXC","WEC","SRE",
+            "NEM","GOLD","RGLD","WPM","GLD","SLV","TLT","IEF",
+        ],
+        "desc": "Consumer Staples, Healthcare, Utilities, Gold — safe havens",
+    },
+}
+
+
+def get_vix_regime(vix: float) -> str:
+    if vix <= 0:   return "low"
+    if vix < 20:   return "low"
+    if vix <= 30:  return "mid"
+    return "high"
+
+
+def get_priority_tickers(vix: float) -> list:
+    """Return priority tickers for current VIX regime."""
+    return VIX_REGIMES[get_vix_regime(vix)]["tickers"]
+
+
+
 def _get_ohlcv(ticker: str, period: str = "1y") -> pd.DataFrame:
     try:
         t  = yf.Ticker(ticker)
@@ -312,7 +363,66 @@ def _generate_summary(ticker, price, rsi, macd_bullish, trend_4w, above_200,
 # ──────────────────────────────────────────────────────────────
 #  DEBUG
 # ──────────────────────────────────────────────────────────────
-def debug_ticker(ticker: str, params: dict) -> str:
+def _quality_filters(close: pd.Series, ma50: float) -> dict:
+    """
+    Advanced quality filters to avoid traps:
+    1. MA50 distance — reject if price drifted too far above MA50
+    2. Sideways chop — reject if stock has been going nowhere for months
+    3. Bull trap — small bounce after big drop is suspicious
+    Returns dict with {passes, reasons}
+    """
+    reasons = []
+    passes  = True
+
+    try:
+        price = float(close.iloc[-1])
+        n = len(close)
+
+        # ── 1. Distance from MA50 (avoid stocks already extended UP) ──
+        if ma50 and ma50 > 0:
+            pct_above_ma50 = (price - ma50) / ma50 * 100
+            if pct_above_ma50 > 15:
+                reasons.append(f"Too extended above MA50 (+{pct_above_ma50:.1f}%) — likely overbought")
+                passes = False
+
+        # ── 2. Sideways chop detector ─────────────────────────────────
+        # If the range over last 60 days is less than 8%, it's going nowhere
+        if n >= 60:
+            last60 = close.iloc[-60:]
+            rng = (last60.max() - last60.min()) / last60.mean() * 100
+            if rng < 8:
+                reasons.append(f"Sideways chop — only {rng:.1f}% range in 60 days")
+                passes = False
+
+        # ── 3. Bull trap detector ─────────────────────────────────────
+        # Small bounce (3-8%) after a large drop (>20%) = suspicious
+        if n >= 30:
+            recent_low  = float(close.iloc[-20:].min())
+            peak_before = float(close.iloc[-90:-20].max()) if n >= 90 else None
+            if peak_before and peak_before > 0:
+                drop_from_peak = (recent_low - peak_before) / peak_before * 100
+                bounce         = (price - recent_low) / recent_low * 100
+                if drop_from_peak < -25 and 2 < bounce < 12:
+                    reasons.append(f"Possible bull trap — dropped {drop_from_peak:.0f}% then bounced {bounce:.1f}%")
+                    passes = False
+
+        # ── 4. Consecutive lower highs (downtrend structure) ──────────
+        if n >= 40:
+            highs = close.rolling(5).max().iloc[-40:]
+            # Count how many of last 6 5-day highs are lower than the previous
+            h_vals = highs.iloc[::6].values
+            lower_highs = sum(1 for i in range(1, len(h_vals)) if h_vals[i] < h_vals[i-1])
+            if lower_highs >= 4 and len(h_vals) >= 5:
+                reasons.append(f"Downtrend structure — {lower_highs} consecutive lower highs")
+                passes = False
+
+    except Exception:
+        pass
+
+    return {"passes": passes, "reasons": reasons}
+
+
+
     try:
         df = _get_ohlcv(ticker, period="2y")
         if df.empty or len(df) < 50:
@@ -439,6 +549,24 @@ def calculate_indicators(ticker: str, params: dict):
         patterns = _chart_patterns(df)
         rr  = _risk_reward(price, support, resistance)
 
+        # ── Quality trap filter ───────────────────────────────────────
+        qf = _quality_filters(close, ma50)
+        if not qf["passes"] and params.get('apply_quality_filter', True):
+            return None
+
+        # ── VIX regime bonus/tag ──────────────────────────────────────
+        current_vix = 0.0
+        vix_regime  = "low"
+        is_priority = False
+        try:
+            vix_hist = yf.Ticker("^VIX").history(period="2d", interval="1d", actions=False)
+            if not vix_hist.empty:
+                current_vix = float(vix_hist['Close'].iloc[-1])
+                vix_regime  = get_vix_regime(current_vix)
+                is_priority = ticker in VIX_REGIMES[vix_regime]["tickers"]
+        except Exception:
+            pass
+
         # Institutional (only if requested)
         inst_pct = None
         min_inst = params.get('min_institutional', 0)
@@ -518,6 +646,9 @@ def calculate_indicators(ticker: str, params: dict):
         # Fresh signal
         if signal_is_fresh: score += 0.5
 
+        # VIX regime priority bonus
+        if is_priority:     score += 1.0
+
         # Institutional
         if inst_pct:
             if   inst_pct >= 60: score += 1.0
@@ -578,6 +709,10 @@ def calculate_indicators(ticker: str, params: dict):
             "institutional_pct":inst_pct,
             "signal_fresh":     signal_is_fresh,
             "signal_date":      datetime.today().strftime('%Y-%m-%d'),
+            "vix_regime":       vix_regime,
+            "vix_priority":     is_priority,
+            "quality_ok":       qf["passes"],
+            "trap_warnings":    qf["reasons"],
             "summary":          summary,
             "score":            score,
             "passes_filter":    True,
