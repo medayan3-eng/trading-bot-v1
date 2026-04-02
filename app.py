@@ -260,6 +260,12 @@ def render_sidebar():
         st.markdown("**Institutional**")
         min_inst    = st.slider("Min Institutional %", 0, 80, 0)
         fresh_only  = st.checkbox("🟢 Fresh Signals (≤3 days)", value=False)
+        apply_qf    = st.checkbox("🔍 Quality Filter (no traps)", value=True,
+                                   help="Filters out extended stocks, sideways chop, bull traps, downtrend structures")
+        st.markdown("---")
+        st.markdown("**Telegram Alerts**")
+        tg_token = st.text_input("Bot Token", value="", type="password", key="tg_token")
+        tg_chat  = st.text_input("Chat ID",   value="", key="tg_chat")
         st.markdown("---")
         max_stocks = st.slider("Max stocks to scan", 50, 1492, 1492)
         st.markdown("---")
@@ -280,6 +286,8 @@ def render_sidebar():
             require_uptrend_52w=req_uptrend,
             bb_period=int(bb_period), bb_std=bb_std,
             min_institutional=min_inst, show_fresh_only=fresh_only,
+            apply_quality_filter=apply_qf,
+            tg_token=tg_token, tg_chat=tg_chat,
             max_stocks=max_stocks, run_scan=run_scan, run_backtest=run_bt,
             run_debug=run_debug, debug_ticker=debug_ticker_input,
         )
@@ -346,6 +354,7 @@ def render_stock_card(stock, bt_summary=None):
     if stock.get('above_200'):  badges.append('<span class="badge badge-green">MA200 ✓</span>')
     if stock.get('above_50'):   badges.append('<span class="badge badge-green">MA50 ✓</span>')
     if uptrend_52w:             badges.append('<span class="badge badge-green">📈 52W UPTREND</span>')
+    if stock.get('vix_priority'): badges.append('<span class="badge badge-blue">⭐ VIX PRIORITY</span>')
     if rsi < 30:                badges.append('<span class="badge badge-red">RSI EXTREME</span>')
     elif rsi < 40:              badges.append('<span class="badge badge-yellow">RSI OVERSOLD</span>')
     if bb_pct < 0.2:            badges.append('<span class="badge badge-green">BB LOWER ✓</span>')
@@ -527,7 +536,27 @@ def render_backtest_panel(bt_data):
 # ══════════════════════════════════════════════
 #  NEWS INTELLIGENCE PANEL
 # ══════════════════════════════════════════════
-def render_news_intelligence():
+def send_telegram(token: str, chat_id: str, results: list):
+    """Send top opportunities to Telegram."""
+    if not token or not chat_id or not results:
+        return False
+    try:
+        top = results[:5]
+        lines = ["📈 *Murphy Scanner — New Opportunities*\n"]
+        for r in top:
+            regime_tag = "⭐ PRIORITY" if r.get('vix_priority') else ""
+            lines.append(
+                f"*{r['ticker']}* ${r['price']} — Score: {r['score']}/10 {regime_tag}\n"
+                f"RSI: {r['rsi']} | MACD: {'✅' if r.get('macd_bullish') else '❌'} | "
+                f"BB%B: {r.get('bb_pct',0):.2f}\n"
+                f"💡 {r.get('summary','')[:80]}\n"
+            )
+        msg = "\n".join(lines)
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        resp = requests.post(url, json={"chat_id": chat_id, "text": msg, "parse_mode": "Markdown"}, timeout=10)
+        return resp.status_code == 200
+    except Exception:
+        return False
     st.markdown("### 🧠 AI News Intelligence")
 
     ni_tab1, ni_tab2 = st.tabs(["📰 News Analysis", "😨 VIX Spike History"])
@@ -731,6 +760,16 @@ def main():
 
         if len(lock_results) == 0:
             st.warning("⚠️ 0 stocks passed. Try: RSI Max=60, uncheck MA200/MA50, Min Beta=0, Min Institutional=0")
+        else:
+            # Telegram alert
+            tg_token = params.get('tg_token','')
+            tg_chat  = params.get('tg_chat','')
+            if tg_token and tg_chat:
+                sent = send_telegram(tg_token, tg_chat, lock_results)
+                if sent:
+                    st.success(f"📱 Telegram alert sent — top {min(5,len(lock_results))} opportunities")
+                else:
+                    st.warning("📱 Telegram send failed — check token/chat ID")
 
     # ── STEP 2: BACKTEST (only scanned stocks) ─────────────
     if params['run_backtest']:
@@ -770,6 +809,33 @@ def main():
                 col.markdown(f'<div class="metric-card"><div class="scan-label">{lbl}</div>'
                               f'<div class="scan-stat">{val}</div></div>', unsafe_allow_html=True)
             st.markdown("---")
+
+            # VIX Regime priority panel
+            try:
+                from screener import VIX_REGIMES, get_vix_regime
+                vix_val = data.get("VIX", {}).get("value", 0) if 'data' in dir() else 0
+                try:
+                    vix_hist = yf.Ticker("^VIX").history(period="2d", interval="1d", actions=False)
+                    vix_val  = float(vix_hist['Close'].iloc[-1]) if not vix_hist.empty else vix_val
+                except Exception:
+                    pass
+                regime_key  = get_vix_regime(vix_val)
+                regime      = VIX_REGIMES[regime_key]
+                priority_found = [r for r in results if r.get('vix_priority')]
+                if priority_found:
+                    st.markdown(f"""
+                    <div style="background:#111827;border:1px solid #1e293b;border-left:4px solid {regime['color']};
+                                border-radius:8px;padding:0.8rem 1.2rem;margin-bottom:0.8rem;">
+                      <div style="font-size:0.75rem;color:#4a5568;text-transform:uppercase;letter-spacing:1px;">
+                        ⭐ VIX REGIME PRIORITY — {regime['label']}
+                      </div>
+                      <div style="font-size:0.82rem;color:{regime['color']};margin-top:0.3rem;">{regime['desc']}</div>
+                      <div style="font-family:'IBM Plex Mono',monospace;font-size:0.85rem;margin-top:0.4rem;color:#e0e6f0;">
+                        {' · '.join(r['ticker'] for r in priority_found[:10])}
+                      </div>
+                    </div>""", unsafe_allow_html=True)
+            except Exception:
+                pass
 
             cf1, cf2, cf3 = st.columns(3)
             with cf1: min_score  = st.slider("Min Score", 0, 10, 0)
