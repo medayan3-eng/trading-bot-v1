@@ -473,7 +473,46 @@ def _get_spy() -> pd.Series:
     return s
 
 
-def calculate_indicators(ticker: str, params: dict):
+def debug_ticker(ticker: str, params: dict) -> str:
+    """Explains exactly why a ticker passed or failed all filters."""
+    try:
+        df = _get_ohlcv(ticker, period="2y")
+        if df.empty or len(df) < 50:
+            return f"{ticker}: ❌ No data ({len(df)} rows)"
+        close = df['Close']
+        price = round(float(close.iloc[-1]), 2)
+        if price < params.get('min_price', 15):
+            return f"{ticker}: ❌ Price ${price} < min ${params.get('min_price')}"
+        avg_vol = float(df['Volume'].rolling(20).mean().iloc[-1]) if 'Volume' in df.columns else 0
+        if avg_vol < params.get('min_volume', 200_000):
+            return f"{ticker}: ❌ Volume {avg_vol:,.0f} too low"
+        ma50  = float(close.rolling(50).mean().iloc[-1])  if len(close) >= 50  else None
+        ma200 = float(close.rolling(200).mean().iloc[-1]) if len(close) >= 200 else None
+        if params.get('require_above_200') and (not ma200 or price < ma200):
+            return f"{ticker}: ❌ Below MA200 (${price} vs ${round(ma200,2) if ma200 else 'N/A'})"
+        if params.get('require_above_50') and (not ma50 or price < ma50*0.97):
+            return f"{ticker}: ❌ Below MA50 (${price} vs ${round(ma50,2) if ma50 else 'N/A'})"
+        rsi = _rsi(close, params.get('rsi_period', 14))
+        rsi_min, rsi_max = params.get('rsi_min', 0), params.get('rsi_max', 90)
+        if rsi > rsi_max or rsi < rsi_min:
+            return f"{ticker}: ❌ RSI={rsi} not in [{rsi_min}–{rsi_max}]"
+        uptrend = _uptrend_52w(close)
+        if params.get('require_uptrend_52w') and not uptrend:
+            return f"{ticker}: ❌ Not in 52-week uptrend"
+        qf = _quality_filters(close, ma50)
+        if not qf["passes"] and params.get('apply_quality_filter', True):
+            return f"{ticker}: ❌ Quality filter: {' | '.join(qf['reasons'])}"
+        trend = _trend_pct(close, 20)
+        vix_regime = get_vix_regime(0)
+        is_priority = ticker in VIX_REGIMES[vix_regime]["tickers"]
+        return (f"{ticker}: ✅ PASSES — Price=${price}, RSI={rsi}, "
+                f"52W={'✓' if uptrend else '✗'}, Trend4W={trend}%, "
+                f"VIX-Priority={'⭐' if is_priority else '—'}")
+    except Exception as e:
+        return f"{ticker}: ❌ Exception: {e}"
+
+
+
     try:
         df = _get_ohlcv(ticker, period="2y")   # 2 years for 52w uptrend check
         if df.empty or len(df) < 60:
