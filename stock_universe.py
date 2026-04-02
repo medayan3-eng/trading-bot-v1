@@ -1,5 +1,5 @@
 """
-Stock universe — March 2026.
+Stock universe — April 2026.
 """
 
 STOCK_UNIVERSE = [
@@ -150,5 +150,11 @@ STOCK_UNIVERSE = [
     "UNTY", "UPLD", "USAT", "USCR", "USEG", "USLM", "USPH", "USX", "UTL", "UUUU",
     "UVSP", "VAPO", "VBTX", "VCEL", "VCRA", "VTC", "VVC", "VVI", "WATT", "WAVD",
     "WLDN", "WLFC", "WNEB", "WTBA", "WTFC", "WTRG", "WTS", "WTW", "WWD", "XFOR",
-    "XOMA", "XPLR", "ZBH", "ZDGE", "ZENT", "ZIXI",
+    "XOMA", "XPLR", "ZBH", "ZDGE", "ZENT", "ZIXI", "SPY", "QQQ", "DIA", "IWM",
+    "XLF", "XLK", "XLE", "XLV", "XLI", "XLP", "XLU", "XLB", "XLY", "XLRE",
+    "XME", "SMH", "KRE", "ARKK", "TLT", "IEF", "GLD", "SLV", "USO", "UNG",
+    "UUP", "VIXY", "TNA", "TZA", "SQQQ", "TQQQ", "FAS", "FAZ", "SOXL", "SOXS",
+    "ERX", "ERY", "JNUG", "JDST", "LABU", "LABD", "TMF", "TMV", "YINN", "YANG",
+    "EWJ", "EWZ", "FXI", "EEM", "VEA", "VWO", "AAWW", "ACI", "AGM", "ARNC",
+    "BPOP", "CSL", "CUBE",
 ]
