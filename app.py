@@ -539,24 +539,31 @@ def render_backtest_panel(bt_data):
 def send_telegram(token: str, chat_id: str, results: list):
     """Send top opportunities to Telegram."""
     if not token or not chat_id or not results:
-        return False
+        return False, "Missing token or chat_id"
     try:
         top = results[:5]
-        lines = ["📈 *Murphy Scanner — New Opportunities*\n"]
+        lines = ["📈 Murphy Scanner — New Opportunities\n"]
         for r in top:
-            regime_tag = "⭐ PRIORITY" if r.get('vix_priority') else ""
+            priority = "⭐ PRIORITY " if r.get('vix_priority') else ""
             lines.append(
-                f"*{r['ticker']}* ${r['price']} — Score: {r['score']}/10 {regime_tag}\n"
-                f"RSI: {r['rsi']} | MACD: {'✅' if r.get('macd_bullish') else '❌'} | "
-                f"BB%B: {r.get('bb_pct',0):.2f}\n"
-                f"💡 {r.get('summary','')[:80]}\n"
+                f"{priority}{r['ticker']} ${r['price']} — Score: {r['score']}/10\n"
+                f"RSI: {r['rsi']} BB: {r.get('bb_pct',0):.2f} "
+                f"MACD: {'UP' if r.get('macd_bullish') else 'DOWN'}\n"
+                f">> {r.get('summary','')[:100]}\n"
             )
         msg = "\n".join(lines)
-        url = f"https://api.telegram.org/bot{token}/sendMessage"
-        resp = requests.post(url, json={"chat_id": chat_id, "text": msg, "parse_mode": "Markdown"}, timeout=10)
-        return resp.status_code == 200
-    except Exception:
-        return False
+        url  = f"https://api.telegram.org/bot{token}/sendMessage"
+        resp = requests.post(
+            url,
+            data={"chat_id": chat_id, "text": msg},
+            timeout=15
+        )
+        if resp.status_code == 200:
+            return True, "OK"
+        else:
+            return False, f"HTTP {resp.status_code}: {resp.text[:200]}"
+    except Exception as e:
+        return False, str(e)
     st.markdown("### 🧠 AI News Intelligence")
 
     ni_tab1, ni_tab2 = st.tabs(["📰 News Analysis", "😨 VIX Spike History"])
@@ -765,11 +772,11 @@ def main():
             tg_token = params.get('tg_token','')
             tg_chat  = params.get('tg_chat','')
             if tg_token and tg_chat:
-                sent = send_telegram(tg_token, tg_chat, lock_results)
+                sent, tg_msg = send_telegram(tg_token, tg_chat, lock_results)
                 if sent:
-                    st.success(f"📱 Telegram alert sent — top {min(5,len(lock_results))} opportunities")
+                    st.success(f"📱 Telegram alert sent!")
                 else:
-                    st.warning("📱 Telegram send failed — check token/chat ID")
+                    st.error(f"📱 Telegram failed: {tg_msg}")
 
     # ── STEP 2: BACKTEST (only scanned stocks) ─────────────
     if params['run_backtest']:
