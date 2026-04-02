@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
+import requests
 import warnings
 warnings.filterwarnings('ignore')
 
