@@ -512,7 +512,7 @@ def debug_ticker(ticker: str, params: dict) -> str:
         return f"{ticker}: ❌ Exception: {e}"
 
 
-
+def calculate_indicators(ticker: str, params: dict):
     try:
         df = _get_ohlcv(ticker, period="2y")   # 2 years for 52w uptrend check
         if df.empty or len(df) < 60:
