@@ -713,10 +713,12 @@ def main():
 
     # ── STEP 1: SCAN ──────────────────────────────────────
     if params['run_scan']:
-        import random
+        import random, time
+        random.seed(int(time.time()))  # different seed every scan
         universe_pool = STOCK_UNIVERSE.copy()
         random.shuffle(universe_pool)
-        universe = universe_pool[:params['max_stocks']]
+        max_s = params['max_stocks']
+        universe = universe_pool[:max_s] if max_s < len(universe_pool) else universe_pool
         st.info(f"🔍 Scanning {len(universe)} stocks...")
         pb = st.progress(0)
         st_txt = st.empty()
