@@ -532,7 +532,7 @@ def render_backtest_panel(bt_data):
 # ══════════════════════════════════════════════
 #  NEWS INTELLIGENCE PANEL
 # ══════════════════════════════════════════════
-def render_news_intelligence_header():
+def render_news_intelligence():
     st.markdown("### 🧠 AI News Intelligence")
 
     ni_tab1, ni_tab2 = st.tabs(["📰 News Analysis", "😨 VIX Spike History"])
