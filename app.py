@@ -14,6 +14,7 @@ from screener import calculate_indicators, debug_ticker
 from backtester import run_backtest_on_screened
 from news_fetcher import fetch_news
 from news_intelligence import run_news_intelligence, run_vix_analysis
+from macro_intelligence import run_macro_intelligence
 from stock_universe import STOCK_UNIVERSE
 
 st.set_page_config(
@@ -541,6 +542,157 @@ def render_backtest_panel(bt_data):
 # ══════════════════════════════════════════════
 #  NEWS INTELLIGENCE PANEL
 # ══════════════════════════════════════════════
+def render_macro_panel():
+    """Macro Intelligence — live news + historical playbook + AI recommendations."""
+    st.markdown("### 🌍 Macro Intelligence — Live Market Briefing")
+    st.caption("Real-time news → historical pattern matching → what to buy/sell now")
+
+    if st.button("🔄 Refresh Macro Briefing", use_container_width=True, key="macro_btn"):
+        with st.spinner("Fetching news + running AI macro analysis..."):
+            result = run_macro_intelligence()
+            st.session_state['macro_intel'] = result
+
+    result = st.session_state.get('macro_intel')
+    if not result:
+        st.info("Press the button above to get a live macro briefing based on today's headlines.")
+        return
+
+    if result.get('error'):
+        st.error(result['error'])
+        return
+
+    ai = result.get('ai_analysis', {})
+    ts = result.get('timestamp')
+    ts_str = ts.strftime('%H:%M 🇮🇱') if hasattr(ts, 'strftime') else ''
+
+    # ── Situation Summary ──────────────────────────────────
+    summary = ai.get('situation_summary', '')
+    hist    = ai.get('historical_parallel', '')
+    theme   = ai.get('dominant_theme', '').upper()
+    impact  = ai.get('market_impact', 'MEDIUM')
+    risk    = ai.get('risk_level', 'MEDIUM')
+    horizon = ai.get('time_horizon', '')
+
+    impact_col = {"HIGH": "#ef4444", "MEDIUM": "#f59e0b", "LOW": "#00d4aa"}.get(impact, "#f59e0b")
+    risk_col   = {"HIGH": "#ef4444", "MEDIUM": "#f59e0b", "LOW": "#00d4aa"}.get(risk, "#f59e0b")
+
+    if summary:
+        st.markdown(f"""
+        <div style="background:#111827;border:1px solid #1e293b;border-left:4px solid #60a5fa;
+                    border-radius:8px;padding:1rem 1.2rem;margin-bottom:0.8rem;">
+          <div style="display:flex;gap:1rem;align-items:center;margin-bottom:0.5rem;flex-wrap:wrap;">
+            <span style="font-family:IBM Plex Mono,monospace;font-size:0.9rem;font-weight:700;
+                         color:#60a5fa;">🌐 {theme}</span>
+            <span style="font-size:0.72rem;color:{impact_col};border:1px solid {impact_col};
+                         border-radius:4px;padding:0.1rem 0.4rem;">IMPACT: {impact}</span>
+            <span style="font-size:0.72rem;color:{risk_col};border:1px solid {risk_col};
+                         border-radius:4px;padding:0.1rem 0.4rem;">RISK: {risk}</span>
+            <span style="font-size:0.72rem;color:#4a5568;">⏱ {horizon}</span>
+            <span style="font-size:0.72rem;color:#4a5568;margin-left:auto;">{ts_str}</span>
+          </div>
+          <div style="color:#e0e6f0;font-size:0.88rem;line-height:1.6;margin-bottom:0.5rem;">{summary}</div>
+          <div style="color:#9ca3af;font-size:0.8rem;border-top:1px solid #1e293b;padding-top:0.4rem;">
+            📚 Historical parallel: {hist}
+          </div>
+        </div>""", unsafe_allow_html=True)
+
+    # ── Fast Themes (rule-based) ───────────────────────────
+    fast_themes = result.get('fast_themes', [])
+    if fast_themes:
+        theme_html = " ".join(
+            f'<span style="background:rgba(59,130,246,0.15);color:#60a5fa;border:1px solid '
+            f'rgba(59,130,246,0.3);border-radius:4px;padding:0.2rem 0.5rem;font-size:0.75rem;">'
+            f'{t["theme"].replace("_"," ").title()} ({t["score"]})</span>'
+            for t in fast_themes)
+        st.markdown(f'<div style="margin-bottom:0.8rem;">Detected themes: {theme_html}</div>',
+                    unsafe_allow_html=True)
+
+    # ── AI Reasoning ──────────────────────────────────────
+    reasoning = ai.get('reasoning', '')
+    if reasoning:
+        st.markdown(f"""
+        <div style="background:rgba(96,165,250,0.06);border-left:3px solid #60a5fa;
+                    border-radius:0 6px 6px 0;padding:0.6rem 0.9rem;margin-bottom:0.8rem;
+                    font-size:0.82rem;color:#9ca3af;">
+            💡 {reasoning}
+        </div>""", unsafe_allow_html=True)
+
+    # ── Buy / Sell Plays ──────────────────────────────────
+    plays = ai.get('immediate_plays', {})
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("#### 🟢 Strong Buy")
+        strong_buy = plays.get('strong_buy', [])
+        consider   = plays.get('consider_buy', [])
+        perf       = result.get('historical_perf', {})
+
+        for ticker in (strong_buy + consider)[:8]:
+            p = perf.get(ticker, {})
+            perf_1y = p.get('perf_1y')
+            perf_1m = p.get('perf_1m')
+            price   = p.get('price')
+            perf_str = ""
+            if perf_1y is not None:
+                c1y = "#00d4aa" if perf_1y > 0 else "#ef4444"
+                c1m = "#00d4aa" if perf_1m and perf_1m > 0 else "#ef4444"
+                perf_str = (f'<span style="font-size:0.7rem;color:{c1y};">1Y: {perf_1y:+.0f}%</span>'
+                           f' <span style="font-size:0.7rem;color:{c1m};">1M: {perf_1m:+.0f}%</span>')
+            badge = "⭐" if ticker in strong_buy else "👀"
+            st.markdown(
+                f'<div style="background:#111827;border-left:3px solid #00d4aa;border-radius:6px;'
+                f'padding:0.5rem 0.8rem;margin:0.2rem 0;display:flex;justify-content:space-between;align-items:center;">'
+                f'<span style="font-family:IBM Plex Mono,monospace;color:#00d4aa;font-weight:700;">'
+                f'{badge} {ticker}</span>'
+                f'<span>{perf_str}</span></div>',
+                unsafe_allow_html=True)
+
+        sectors_in = plays.get('sectors_to_rotate_into', [])
+        if sectors_in:
+            st.markdown(f'<div style="font-size:0.78rem;color:#00d4aa;margin-top:0.4rem;">'
+                       f'📊 Sectors: {", ".join(sectors_in)}</div>', unsafe_allow_html=True)
+
+    with col2:
+        st.markdown("#### 🔴 Avoid / Consider Short")
+        avoid = plays.get('avoid_sell', [])
+        for ticker in avoid[:8]:
+            st.markdown(
+                f'<div style="background:#111827;border-left:3px solid #ef4444;border-radius:6px;'
+                f'padding:0.5rem 0.8rem;margin:0.2rem 0;">'
+                f'<span style="font-family:IBM Plex Mono,monospace;color:#ef4444;font-weight:700;">'
+                f'⚠️ {ticker}</span></div>',
+                unsafe_allow_html=True)
+
+        sectors_out = plays.get('sectors_to_avoid', [])
+        if sectors_out:
+            st.markdown(f'<div style="font-size:0.78rem;color:#ef4444;margin-top:0.4rem;">'
+                       f'📊 Avoid: {", ".join(sectors_out)}</div>', unsafe_allow_html=True)
+
+    # ── Primary Playbook ──────────────────────────────────
+    pb = result.get('primary_playbook')
+    if pb:
+        with st.expander("📚 Historical Playbook Details"):
+            st.markdown(f"**Description:** {pb.get('description','')}")
+            examples = pb.get('historical_examples', [])
+            if examples:
+                st.markdown("**Historical examples:** " + " | ".join(examples))
+            etfs = pb.get('etfs', {})
+            if etfs:
+                st.markdown(f"**Long ETFs:** {etfs.get('long','')}  |  **Short ETFs:** {etfs.get('short','')}")
+
+    # ── Headlines ─────────────────────────────────────────
+    with st.expander(f"📋 Headlines used ({result.get('headline_count',0)})"):
+        for h in result.get('headlines', [])[:20]:
+            src = h.get('source','')
+            url = h.get('url','#')
+            st.markdown(
+                f'<div style="padding:0.25rem 0;border-bottom:1px solid #1e293b;">'
+                f'<span style="background:rgba(59,130,246,0.1);color:#60a5fa;font-size:0.68rem;'
+                f'border-radius:3px;padding:0.1rem 0.3rem;margin-right:0.3rem;">{src}</span>'
+                f'<a href="{url}" target="_blank" style="color:#e0e6f0;font-size:0.8rem;">'
+                f'{h["title"]}</a></div>', unsafe_allow_html=True)
+
+
 def render_news_intelligence():
     st.markdown("### 🧠 AI News Intelligence")
 
@@ -709,9 +861,13 @@ def main():
     elif vix >= 20:
         st.warning("⚠️ **VIX 20–30 — Rotate to defensives: Utilities (XLU), Healthcare (XLV), Consumer Staples (XLP). Avoid high-beta tech.**")
 
-    for k in ['scan_results', 'backtest_results']:
+    for k in ['scan_results', 'backtest_results', 'macro_intel']:
         if k not in st.session_state:
             st.session_state[k] = None
+
+    # ── MACRO INTELLIGENCE (homepage) ────────────────────────
+    with st.expander("🌍 Macro Intelligence — Live Market Briefing", expanded=False):
+        render_macro_panel()
 
     # ── DEBUG single ticker ────────────────────────────────
     if params.get('run_debug') and params.get('debug_ticker'):
