@@ -265,7 +265,7 @@ def render_sidebar():
         apply_qf    = st.checkbox("🔍 Quality Filter (no traps)", value=True,
                                    help="Filters out extended stocks, sideways chop, bull traps")
         st.markdown("---")
-        max_stocks = st.slider("Max stocks to scan", 50, 1548, 1548)
+        max_stocks = st.slider("Max stocks to scan", 50, 1567, 1567)
         st.markdown("---")
 
         run_scan = st.button("🔍 STEP 1 — RUN SCAN", use_container_width=True)
