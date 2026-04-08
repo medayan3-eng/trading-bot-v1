@@ -255,49 +255,158 @@ def _volume_spike(volume: pd.Series, threshold: float = 2.0) -> tuple:
 
 def _chart_patterns(df: pd.DataFrame) -> list:
     """
-    Detect basic chart patterns: double bottom, ascending triangle.
-    Returns list of pattern names found.
+    Detect Murphy-style chart patterns:
+    BULLISH: Double Bottom (W), Inverse H&S, Ascending Triangle, Cup & Handle, Falling Wedge, Bull Flag
+    BEARISH: Double Top (M), H&S Top, Descending Triangle, Rising Wedge
+    Returns list of {"name": str, "type": "bullish"|"bearish", "strength": float}
     """
     patterns = []
     try:
         close = df['Close']
         low   = df['Low']
         high  = df['High']
+        vol   = df['Volume'] if 'Volume' in df.columns else pd.Series(dtype=float)
         n     = len(close)
-        if n < 40:
+        if n < 50:
             return patterns
-
         price = float(close.iloc[-1])
 
-        # ── Double Bottom (W pattern) ────────────────────────────────
-        # Look for two similar lows in last 60 days with a bounce in between
-        last60 = close.iloc[-60:]
-        if len(last60) >= 40:
-            half = len(last60) // 2
-            low1 = float(last60.iloc[:half].min())
-            low2 = float(last60.iloc[half:].min())
-            mid_high = float(last60.iloc[half//2:half+half//2].max())
-            if (abs(low1 - low2) / ((low1+low2)/2) < 0.03 and   # two similar lows
-                mid_high > max(low1, low2) * 1.03 and             # bounce between
-                price > mid_high * 0.98):                          # breakout
-                patterns.append("Double Bottom (W)")
+        # ────────────────────────────────────────────────
+        # BULLISH PATTERNS
+        # ────────────────────────────────────────────────
 
-        # ── Ascending Triangle ───────────────────────────────────────
-        # Flat resistance + rising lows
-        last40_high = high.iloc[-40:]
-        last40_low  = low.iloc[-40:]
-        resistance_flat = (last40_high.max() - last40_high.min()) / last40_high.mean() < 0.04
-        # Rising lows: fit linear trend
-        lows_arr = last40_low.values
-        x = np.arange(len(lows_arr))
-        if len(x) > 5:
-            slope = np.polyfit(x, lows_arr, 1)[0]
-            if resistance_flat and slope > 0:
-                patterns.append("Ascending Triangle")
+        # 1. Double Bottom (W) — two similar lows, bounce in between, right side breaks neckline
+        if n >= 60:
+            seg = close.iloc[-60:]
+            half = len(seg) // 2
+            low1 = float(seg.iloc[:half].min())
+            low2 = float(seg.iloc[half:].min())
+            neckline = float(seg.iloc[half//2:half+half//2].max())
+            low_diff = abs(low1 - low2) / ((low1 + low2) / 2)
+            if (low_diff < 0.04 and
+                neckline > max(low1, low2) * 1.02 and
+                price >= neckline * 0.98):
+                strength = 1.0 - low_diff * 5
+                patterns.append({"name": "Double Bottom (W)", "type": "bullish", "strength": round(strength, 2)})
+
+        # 2. Inverse Head & Shoulders (bullish reversal)
+        if n >= 80:
+            seg = close.iloc[-80:]
+            q = len(seg) // 4
+            ls = float(seg.iloc[:q].min())          # left shoulder
+            hd = float(seg.iloc[q:2*q].min())       # head (deepest)
+            rs = float(seg.iloc[2*q:3*q].min())     # right shoulder
+            neckline = float(seg.iloc[q//2:q + q//2].max())
+            if (hd < ls and hd < rs and             # head is lowest
+                abs(ls - rs) / ((ls + rs) / 2) < 0.06 and  # shoulders similar
+                price >= neckline * 0.97):          # price near/above neckline
+                patterns.append({"name": "Inv. Head & Shoulders", "type": "bullish", "strength": 0.9})
+
+        # 3. Ascending Triangle — flat resistance, rising lows
+        if n >= 40:
+            h40 = high.iloc[-40:]
+            l40 = low.iloc[-40:]
+            res_range = (h40.max() - h40.min()) / h40.mean()
+            x = np.arange(len(l40))
+            slope = np.polyfit(x, l40.values, 1)[0]
+            if res_range < 0.04 and slope > 0:
+                patterns.append({"name": "Ascending Triangle", "type": "bullish", "strength": 0.8})
+
+        # 4. Cup & Handle — rounded bottom then small consolidation
+        if n >= 90:
+            cup = close.iloc[-90:-15]
+            handle = close.iloc[-15:]
+            cup_low = float(cup.min())
+            cup_high_l = float(cup.iloc[:15].mean())
+            cup_high_r = float(cup.iloc[-15:].mean())
+            handle_range = (handle.max() - handle.min()) / handle.mean()
+            if (cup_high_l > cup_low * 1.05 and     # meaningful dip
+                cup_high_r > cup_low * 1.05 and     # recovered
+                abs(cup_high_l - cup_high_r) / cup_high_l < 0.05 and  # symmetric
+                handle_range < 0.06 and             # tight handle
+                price > float(cup.iloc[-1]) * 0.98):
+                patterns.append({"name": "Cup & Handle", "type": "bullish", "strength": 0.85})
+
+        # 5. Falling Wedge (bullish) — lower highs AND lower lows but narrowing
+        if n >= 40:
+            h40 = high.iloc[-40:]
+            l40 = low.iloc[-40:]
+            x = np.arange(40)
+            slope_h = np.polyfit(x, h40.values, 1)[0]
+            slope_l = np.polyfit(x, l40.values, 1)[0]
+            if slope_h < 0 and slope_l < 0 and slope_l > slope_h:  # both down, lows falling less
+                wedge_width_start = float(h40.iloc[0] - l40.iloc[0])
+                wedge_width_end   = float(h40.iloc[-1] - l40.iloc[-1])
+                if wedge_width_end < wedge_width_start * 0.6:  # narrowing by 40%+
+                    patterns.append({"name": "Falling Wedge", "type": "bullish", "strength": 0.75})
+
+        # 6. Bull Flag — strong up move then tight sideways/down consolidation
+        if n >= 30:
+            pole = close.iloc[-30:-10]
+            flag = close.iloc[-10:]
+            pole_gain = (float(pole.iloc[-1]) - float(pole.iloc[0])) / float(pole.iloc[0]) * 100
+            flag_range = (flag.max() - flag.min()) / flag.mean() * 100
+            flag_slope = np.polyfit(np.arange(10), flag.values, 1)[0]
+            if pole_gain > 8 and flag_range < 5 and flag_slope <= 0:
+                patterns.append({"name": "Bull Flag", "type": "bullish", "strength": 0.8})
+
+        # ────────────────────────────────────────────────
+        # BEARISH PATTERNS
+        # ────────────────────────────────────────────────
+
+        # 7. Double Top (M) — two similar highs with a dip, warns of reversal
+        if n >= 60:
+            seg = close.iloc[-60:]
+            half = len(seg) // 2
+            hi1 = float(seg.iloc[:half].max())
+            hi2 = float(seg.iloc[half:].max())
+            mid_low = float(seg.iloc[half//2:half+half//2].min())
+            hi_diff = abs(hi1 - hi2) / ((hi1 + hi2) / 2)
+            if (hi_diff < 0.03 and
+                mid_low < min(hi1, hi2) * 0.97 and
+                price <= mid_low * 1.02):
+                patterns.append({"name": "Double Top (M) ⚠️", "type": "bearish", "strength": 0.85})
+
+        # 8. Head & Shoulders Top (bearish)
+        if n >= 80:
+            seg = close.iloc[-80:]
+            q = len(seg) // 4
+            ls = float(seg.iloc[:q].max())
+            hd = float(seg.iloc[q:2*q].max())
+            rs = float(seg.iloc[2*q:3*q].max())
+            neckline = float(seg.iloc[q//2:q + q//2].min())
+            if (hd > ls and hd > rs and
+                abs(ls - rs) / ((ls + rs) / 2) < 0.06 and
+                price <= neckline * 1.02):
+                patterns.append({"name": "H&S Top ⚠️", "type": "bearish", "strength": 0.9})
+
+        # 9. Descending Triangle — flat support, falling highs = bearish
+        if n >= 40:
+            h40 = high.iloc[-40:]
+            l40 = low.iloc[-40:]
+            sup_range = (l40.max() - l40.min()) / l40.mean()
+            x = np.arange(40)
+            slope_h = np.polyfit(x, h40.values, 1)[0]
+            if sup_range < 0.04 and slope_h < 0:
+                patterns.append({"name": "Descending Triangle ⚠️", "type": "bearish", "strength": 0.75})
+
+        # 10. Rising Wedge (bearish) — both highs and lows rising but narrowing
+        if n >= 40:
+            h40 = high.iloc[-40:]
+            l40 = low.iloc[-40:]
+            x = np.arange(40)
+            slope_h = np.polyfit(x, h40.values, 1)[0]
+            slope_l = np.polyfit(x, l40.values, 1)[0]
+            if slope_h > 0 and slope_l > 0 and slope_h < slope_l:  # both up, highs rising less
+                wedge_width_start = float(h40.iloc[0] - l40.iloc[0])
+                wedge_width_end   = float(h40.iloc[-1] - l40.iloc[-1])
+                if wedge_width_end < wedge_width_start * 0.6:
+                    patterns.append({"name": "Rising Wedge ⚠️", "type": "bearish", "strength": 0.7})
 
     except Exception:
         pass
     return patterns
+
 
 
 def _risk_reward(price: float, support: float, resistance: float,
@@ -328,36 +437,44 @@ def _risk_reward(price: float, support: float, resistance: float,
 def _generate_summary(ticker, price, rsi, macd_bullish, trend_4w, above_200,
                       above_50, uptrend_52w, near_support, rs, patterns,
                       vol_spike, bb_pct, rr) -> str:
-    """Generate a short plain-language summary of why this stock was selected."""
+    """Generate a short plain-English summary of why this stock was selected."""
     reasons = []
 
     if uptrend_52w:
-        reasons.append("במגמת עלייה מוכחת של 52 שבועות")
+        reasons.append("Confirmed 52-week uptrend")
     if rsi < 30:
-        reasons.append(f"RSI {rsi} — מכירת יתר קיצונית, הזדמנות כניסה מצוינת")
+        reasons.append(f"RSI {rsi} — extreme oversold, strong entry opportunity")
     elif rsi < 40:
-        reasons.append(f"RSI {rsi} — oversold בתוך מגמה חיובית")
+        reasons.append(f"RSI {rsi} — oversold within uptrend")
     if macd_bullish:
-        reasons.append("MACD היסטוגרמה חיובית — מומנטום עולה")
+        reasons.append("MACD histogram positive — rising momentum")
     if near_support:
-        reasons.append("מחיר קרוב לרמת תמיכה חזקה — כניסה בסיכון נמוך")
+        reasons.append("Price near strong support — low-risk entry")
     if bb_pct < 0.2:
-        reasons.append("מחיר נמצא ברצועת בולינגר התחתונה — פוטנציאל קפיצה")
+        reasons.append("Price at lower Bollinger Band — bounce potential")
     if rs > 1.2:
-        reasons.append(f"חוזק יחסי {rs} — מנצחת את ה-S&P500")
+        reasons.append(f"Relative strength {rs} — outperforming S&P500")
     if vol_spike:
-        reasons.append("⚡ ווליום חריג — כסף מוסדי כנראה נכנס")
+        reasons.append("⚡ Volume spike — likely institutional buying")
+
+    # Pattern summary
     if patterns:
-        reasons.append(f"תבנית גרף: {', '.join(patterns)}")
+        bullish = [p['name'] for p in patterns if isinstance(p, dict) and p.get('type') == 'bullish']
+        bearish = [p['name'] for p in patterns if isinstance(p, dict) and p.get('type') == 'bearish']
+        if bullish:
+            reasons.append(f"Bullish pattern: {', '.join(bullish)}")
+        if bearish:
+            reasons.append(f"⚠️ Bearish pattern detected: {', '.join(bearish)}")
+
     if rr.get('valid'):
-        reasons.append(f"יחס סיכוי:סיכון = 1:{rr['ratio']} ✓ (יעד ${rr['target']}, סטופ ${rr['stop']})")
+        reasons.append(f"R/R = 1:{rr['ratio']} (target ${rr['target']}, stop ${rr['stop']})")
     if above_200 and above_50:
-        reasons.append("מחיר מעל MA200 ו-MA50 — מבנה עולה תקין")
+        reasons.append("Above MA200 & MA50 — healthy uptrend structure")
 
     if not reasons:
-        reasons.append("עוברת את כל פרמטרי מרפי הבסיסיים")
+        reasons.append("Passes all Murphy method criteria")
 
-    return " | ".join(reasons[:5])  # max 5 reasons for readability
+    return " | ".join(reasons[:5])
 
 
 # ──────────────────────────────────────────────────────────────
@@ -677,7 +794,13 @@ def calculate_indicators(ticker: str, params: dict):
         if near_support: score += 0.5
 
         # Chart patterns
-        if patterns:     score += 0.5
+        # Chart patterns — bullish adds score, bearish subtracts
+        bullish_patterns = [p for p in patterns if isinstance(p, dict) and p.get('type') == 'bullish']
+        bearish_patterns = [p for p in patterns if isinstance(p, dict) and p.get('type') == 'bearish']
+        if bullish_patterns:
+            score += min(1.0, sum(p.get('strength', 0.5) for p in bullish_patterns))
+        if bearish_patterns:
+            score -= min(2.0, sum(p.get('strength', 0.5) for p in bearish_patterns))
 
         # Good R/R ratio
         if rr.get('valid'): score += 0.5
