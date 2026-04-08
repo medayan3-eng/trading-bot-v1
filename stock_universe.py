@@ -157,5 +157,7 @@ STOCK_UNIVERSE = [
     "JNUG", "JDST", "LABU", "LABD", "TMF", "TMV", "YINN", "YANG", "EWJ", "EWZ",
     "FXI", "EEM", "VEA", "VWO", "AAWW", "ACI", "AGM", "ARNC", "BPOP", "CSL",
     "CUBE", "GLNG", "IMKTA", "PLPC", "ORKA", "GLBS", "PFE", "ETR", "KODK", "WLK",
-    "CSTM", "IDN", "NOK", "SEB", "SENEB", "TSBK", "TSEM", "SENEA",
+    "CSTM", "IDN", "NOK", "SEB", "SENEB", "TSBK", "TSEM", "SENEA", "AXGN", "BMNR",
+    "CIFR", "CORZ", "CRWV", "CVNA", "FROG", "LIND", "MLTX", "NRIX", "OUST", "PRM",
+    "RDDT", "SATS", "SEZL", "SMTC", "STOK", "U", "VOR",
 ]
