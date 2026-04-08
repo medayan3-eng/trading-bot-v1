@@ -359,7 +359,16 @@ def render_stock_card(stock, bt_summary=None):
     else:                       badges.append('<span class="badge badge-red">MACD ✗</span>')
     if vol_spike:               badges.append('<span class="badge badge-yellow">⚡ VOL SPIKE</span>')
     if near_sup:                badges.append('<span class="badge badge-green">🎯 NEAR SUPPORT</span>')
-    if patterns:                badges.append(f'<span class="badge badge-blue">📐 {patterns[0]}</span>')
+    if patterns:
+        for p in patterns[:3]:  # show up to 3 patterns
+            if isinstance(p, dict):
+                pname = p.get('name', '')
+                ptype = p.get('type', 'bullish')
+                badge_cls = 'badge-green' if ptype == 'bullish' else 'badge-red'
+                icon = '📈' if ptype == 'bullish' else '📉'
+                badges.append(f'<span class="badge {badge_cls}">{icon} {pname}</span>')
+            else:
+                badges.append(f'<span class="badge badge-blue">📐 {p}</span>')
     if rr_valid:                badges.append(f'<span class="badge badge-green">R/R 1:{rr_ratio}</span>')
     if inst_pct and inst_pct >= 30:
         badges.append(f'<span class="badge badge-blue">🏦 {inst_pct:.0f}%</span>')
