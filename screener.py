@@ -240,8 +240,105 @@ def _fibonacci_levels(close: pd.Series) -> dict:
         return {}
 
 
+def _volume_analysis(df: pd.DataFrame, close: pd.Series) -> dict:
+    """
+    Full Murphy volume analysis:
+    1. Volume spike vs 20-day average (institutional buying signal)
+    2. Volume trend — is volume growing or shrinking?
+    3. Breakout confirmation — did a resistance break happen WITH high volume?
+    4. Volume divergence — price up but volume down = weak move warning
+    Returns detailed dict
+    """
+    try:
+        if 'Volume' not in df.columns:
+            return {"ratio": 1.0, "spike": False, "breakout_confirmed": False,
+                    "trend": "neutral", "divergence": False, "vol_ratio_20": 1.0}
+
+        volume = df['Volume']
+        n      = len(close)
+        price  = float(close.iloc[-1])
+
+        # ── 1. Volume ratio vs 20-day avg ─────────────────────────
+        avg_20 = float(volume.rolling(20).mean().iloc[-1])
+        avg_50 = float(volume.rolling(50).mean().iloc[-1]) if n >= 50 else avg_20
+        today  = float(volume.iloc[-1])
+        ratio_20 = round(today / avg_20, 2) if avg_20 > 0 else 1.0
+        ratio_50 = round(today / avg_50, 2) if avg_50 > 0 else 1.0
+        is_spike = ratio_20 >= 1.5   # Murphy: 1.5x avg = meaningful
+
+        # ── 2. Volume trend (is participation growing?) ───────────
+        if n >= 20:
+            recent_avg  = float(volume.iloc[-10:].mean())
+            earlier_avg = float(volume.iloc[-20:-10].mean())
+            if earlier_avg > 0:
+                vol_trend_pct = (recent_avg - earlier_avg) / earlier_avg * 100
+                if vol_trend_pct > 10:
+                    vol_trend = "rising"    # increasing participation
+                elif vol_trend_pct < -10:
+                    vol_trend = "falling"   # declining participation
+                else:
+                    vol_trend = "neutral"
+            else:
+                vol_trend = "neutral"
+        else:
+            vol_trend = "neutral"
+
+        # ── 3. Breakout confirmation ──────────────────────────────
+        # Murphy's rule: price breaks resistance + volume > 1.5x avg = CONFIRMED breakout
+        breakout_confirmed = False
+        breakout_level     = None
+        if n >= 40:
+            # Find recent resistance (highest high in last 20-40 days, excluding last 5)
+            resistance = float(df['High'].iloc[-40:-5].max()) if n >= 45 else None
+            if resistance and price > resistance:
+                # Price broke above resistance — was there volume?
+                breakout_confirmed = ratio_20 >= 1.5
+                breakout_level     = round(resistance, 2)
+
+        # ── 4. Volume divergence (bearish warning) ────────────────
+        # Price making higher highs but volume making lower highs = distribution
+        divergence = False
+        if n >= 20:
+            price_up     = float(close.iloc[-1]) > float(close.iloc[-10])
+            vol_down     = float(volume.iloc[-5:].mean()) < float(volume.iloc[-15:-5].mean()) * 0.8
+            if price_up and vol_down:
+                divergence = True   # weak hands pushing price, institutions not buying
+
+        # ── 5. Accumulation/Distribution (simplified) ────────────
+        # On days price closes UP with above avg volume = accumulation
+        if n >= 20:
+            last20_close  = close.iloc[-20:]
+            last20_vol    = volume.iloc[-20:]
+            avg_vol_20    = last20_vol.mean()
+            accum_days    = sum(1 for i in range(1, len(last20_close))
+                               if last20_close.iloc[i] > last20_close.iloc[i-1]
+                               and last20_vol.iloc[i] > avg_vol_20)
+            distrib_days  = sum(1 for i in range(1, len(last20_close))
+                               if last20_close.iloc[i] < last20_close.iloc[i-1]
+                               and last20_vol.iloc[i] > avg_vol_20)
+            accum_score   = accum_days - distrib_days  # positive = accumulation
+        else:
+            accum_score = 0
+
+        return {
+            "ratio_20":           ratio_20,
+            "ratio_50":           ratio_50,
+            "spike":              is_spike,
+            "vol_trend":          vol_trend,
+            "breakout_confirmed": breakout_confirmed,
+            "breakout_level":     breakout_level,
+            "divergence":         divergence,
+            "accum_score":        accum_score,
+            "avg_20":             round(avg_20, 0),
+            "today_vol":          round(today, 0),
+        }
+    except Exception:
+        return {"ratio_20": 1.0, "spike": False, "breakout_confirmed": False,
+                "vol_trend": "neutral", "divergence": False, "accum_score": 0}
+
+
 def _volume_spike(volume: pd.Series, threshold: float = 2.0) -> tuple:
-    """Detects unusual volume. Returns (ratio, is_spike)."""
+    """Legacy wrapper — kept for compatibility."""
     try:
         avg_50 = float(volume.rolling(50).mean().iloc[-1])
         today  = float(volume.iloc[-1])
@@ -698,12 +795,20 @@ def calculate_indicators(ticker: str, params: dict):
         if min_beta > 0 and beta < min_beta:
             return None
 
-        rs = _relative_strength(close, spy_close)
-        vol_ratio, vol_spike = _volume_spike(volume)
+        rs  = _relative_strength(close, spy_close)
+        va  = _volume_analysis(df, close)   # full Murphy volume analysis
+        vol_ratio = va["ratio_20"]
+        vol_spike = va["spike"]
+        breakout_confirmed = va["breakout_confirmed"]
+        breakout_level     = va["breakout_level"]
+        vol_divergence     = va["divergence"]
+        vol_trend          = va["vol_trend"]
+        accum_score        = va["accum_score"]
+
         support, resistance, near_support = _support_resistance(df)
-        fib = _fibonacci_levels(close)
+        fib      = _fibonacci_levels(close)
         patterns = _chart_patterns(df)
-        rr  = _risk_reward(price, support, resistance)
+        rr       = _risk_reward(price, support, resistance)
 
         # ── Quality trap filter ───────────────────────────────────────
         qf = _quality_filters(close, ma50)
@@ -782,9 +887,13 @@ def calculate_indicators(ticker: str, params: dict):
         # MACD
         if macd_bullish: score += 0.5
 
-        # Volume spike
-        if vol_spike:    score += 0.7
+        # Volume scoring — Murphy: volume must confirm the move
+        if vol_spike:         score += 0.7
         elif vol_ratio > 1.5: score += 0.3
+        if breakout_confirmed: score += 1.0   # confirmed breakout = major bonus
+        if vol_divergence:     score -= 0.5   # divergence = warning, reduce score
+        if vol_trend == "rising": score += 0.3
+        if accum_score >= 3:   score += 0.4   # accumulation pattern
 
         # Relative strength
         if   rs > 1.5: score += 1.0
@@ -853,8 +962,13 @@ def calculate_indicators(ticker: str, params: dict):
             "beta":             beta,
             "rs":               rs,
             "avg_volume":       round(avg_vol, 0),
-            "volume_ratio":     round(vol_ratio, 2),
-            "volume_spike":     vol_spike,
+            "volume_ratio":        round(vol_ratio, 2),
+            "volume_spike":        vol_spike,
+            "breakout_confirmed":  breakout_confirmed,
+            "breakout_level":      breakout_level,
+            "vol_divergence":      vol_divergence,
+            "vol_trend":           vol_trend,
+            "accum_score":         accum_score,
             "macd_line":        macd_line,
             "macd_signal":      macd_signal,
             "macd_hist":        macd_hist,
