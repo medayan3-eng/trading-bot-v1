@@ -159,5 +159,7 @@ STOCK_UNIVERSE = [
     "CUBE", "GLNG", "IMKTA", "PLPC", "ORKA", "GLBS", "PFE", "ETR", "KODK", "WLK",
     "CSTM", "IDN", "NOK", "SEB", "SENEB", "TSBK", "TSEM", "SENEA", "AXGN", "BMNR",
     "CIFR", "CORZ", "CRWV", "CVNA", "FROG", "LIND", "MLTX", "NRIX", "OUST", "PRM",
-    "RDDT", "SATS", "SEZL", "SMTC", "STOK", "U", "VOR",
+    "RDDT", "SATS", "SEZL", "SMTC", "STOK", "U", "VOR", "MYRG", "ONTO", "NKTR",
+    "INTT", "ITRN", "KLIC", "LSCC", "BELFA", "CGEN", "IESC", "FTI", "QUIK", "ALNT",
+    "HOLX", "AMX", "PPL", "FLEX",
 ]
